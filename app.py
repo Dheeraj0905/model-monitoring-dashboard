@@ -1016,7 +1016,7 @@ def show_session_management_page():
     # Session actions
     st.markdown("### 🎛️ Session Actions")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("🆕 Create New Session", use_container_width=True):
@@ -1044,6 +1044,13 @@ def show_session_management_page():
             else:
                 st.error("No active session to export")
     
+    with col4:
+        if st.button("🧹 Cleanup Old Sessions", use_container_width=True):
+            # Clean up sessions older than 7 days
+            st.session_state.results_storage.cleanup_old_results(days_old=7)
+            st.success("Cleaned up old sessions and results!")
+            st.rerun()
+    
     # Session history
     st.markdown("### 📚 Session History")
     
@@ -1066,14 +1073,29 @@ def show_session_management_page():
             format_func=lambda x: next(s['session_name'] for s in sessions if s['session_id'] == x)
         )
         
-        if st.button("📂 Load Selected Session"):
-            success = st.session_state.session_manager.load_session(selected_session)
-            if success:
-                st.session_state.current_session_id = selected_session
-                st.success("Session loaded successfully!")
-                st.rerun()
-            else:
-                st.error("Failed to load session")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📂 Load Selected Session", use_container_width=True):
+                success = st.session_state.session_manager.load_session(selected_session)
+                if success:
+                    st.session_state.current_session_id = selected_session
+                    st.success("Session loaded successfully!")
+                    st.rerun()
+                else:
+                    st.error("Failed to load session")
+        
+        with col2:
+            if st.button("🗑️ Delete Selected Session", use_container_width=True, type="secondary"):
+                if st.session_state.current_session_id == selected_session:
+                    st.warning("Cannot delete the currently active session. Please load a different session first.")
+                else:
+                    success = st.session_state.session_manager.delete_session(selected_session)
+                    if success:
+                        st.success("Session deleted successfully!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete session")
     else:
         st.info("No sessions found. Create a new session to get started.")
     
