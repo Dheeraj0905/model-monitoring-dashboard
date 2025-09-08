@@ -1,6 +1,5 @@
 """
 Explainability utilities using SHAP.
-Provides feature importance and sample explanations for model predictions.
 """
 
 import numpy as np
@@ -286,27 +285,15 @@ class SHAPExplainer:
 
 
 class ExplainabilityAnalyzer:
-    """Comprehensive explainability analysis and visualization."""
+    """Comprehensive explainability analysis."""
     
     def __init__(self):
         self.shap_explainer = SHAPExplainer()
-        self.analysis_history = []
     
     def analyze_model(self, model, X: np.ndarray, 
                      feature_names: Optional[List[str]] = None,
                      background_samples: int = 100) -> Dict[str, Any]:
-        """
-        Perform comprehensive explainability analysis.
-        
-        Args:
-            model: Trained model
-            X: Input data
-            feature_names: List of feature names
-            background_samples: Number of samples to use for background
-            
-        Returns:
-            Dict with comprehensive explainability results
-        """
+        """Perform explainability analysis."""
         if not SHAP_AVAILABLE:
             return {'error': 'SHAP not available. Please install with: pip install shap'}
         
@@ -335,9 +322,6 @@ class ExplainabilityAnalyzer:
                 'visualizations': visualizations,
                 'summary': self._create_summary(explanations)
             }
-            
-            # Store in history
-            self.analysis_history.append(results)
             
             return results
             
@@ -399,10 +383,6 @@ class ExplainabilityAnalyzer:
             summary['top_3_features_percentage'] = sum(imp for _, imp in top_features[:3]) / total_importance * 100
         
         return summary
-    
-    def get_analysis_history(self) -> List[Dict[str, Any]]:
-        """Get history of explainability analyses."""
-        return self.analysis_history
     
     def compare_models(self, model1_results: Dict[str, Any], 
                       model2_results: Dict[str, Any]) -> Dict[str, Any]:
