@@ -1,6 +1,5 @@
 """
-Model utilities for loading, introspection, and prediction.
-Handles .pkl model files and provides schema inference capabilities.
+Model utilities for loading and prediction.
 """
 
 import pickle
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoader:
-    """Handles model loading and introspection."""
+    """Handles model loading and predictions."""
     
     def __init__(self):
         self.model = None

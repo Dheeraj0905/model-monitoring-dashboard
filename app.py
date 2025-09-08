@@ -22,7 +22,7 @@ from schema_utils import SchemaManager, SchemaDefinition
 from synthetic_data import DataGenerator
 from metrics import MetricsAggregator
 from explainability import ExplainabilityAnalyzer
-from storage import SessionManager, ResultsStorage, DataExporter
+from storage import ResultsStorage, DataExporter  # Remove SessionManager import
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +64,31 @@ st.markdown("""
         color: #ffc107;
         font-weight: bold;
     }
+    .option-card {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+        margin: 0.5rem 0;
+    }
+    .feature-item {
+        background-color: #ffffff;
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        border: 1px solid #e9ecef;
+        margin: 0.25rem 0;
+    }
+    .session-item {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e9ecef;
+        margin: 0.5rem 0;
+        transition: box-shadow 0.2s;
+    }
+    .session-item:hover {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,12 +103,8 @@ if 'metrics_aggregator' not in st.session_state:
     st.session_state.metrics_aggregator = MetricsAggregator()
 if 'explainability_analyzer' not in st.session_state:
     st.session_state.explainability_analyzer = ExplainabilityAnalyzer()
-if 'session_manager' not in st.session_state:
-    st.session_state.session_manager = SessionManager()
 if 'results_storage' not in st.session_state:
     st.session_state.results_storage = ResultsStorage()
-if 'current_session_id' not in st.session_state:
-    st.session_state.current_session_id = None
 if 'test_results' not in st.session_state:
     st.session_state.test_results = None
 if 'current_page' not in st.session_state:
@@ -95,22 +116,33 @@ def main():
     # Header
     st.markdown('<h1 class="main-header">🤖 ML Model Monitoring Dashboard</h1>', unsafe_allow_html=True)
     
-    # Sidebar navigation
+    # Sidebar navigation with buttons
     st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox(
-        "Choose a page:",
-        ["🏠 Home", "📁 Model Upload", "📋 Schema Definition", "🎲 Data Generation", 
-         "🧪 Model Testing", "📊 Results & Analytics", "📈 Explainability", "💾 Session Management"],
-        index=["🏠 Home", "📁 Model Upload", "📋 Schema Definition", "🎲 Data Generation", 
-               "🧪 Model Testing", "📊 Results & Analytics", "📈 Explainability", "💾 Session Management"].index(st.session_state.current_page)
-    )
     
-    # Update session state if page changed via sidebar
-    if page != st.session_state.current_page:
-        st.session_state.current_page = page
-        st.rerun()
+    # Navigation buttons - simplified version
+    nav_buttons = {
+        "🏠 Home": "show_home_page",
+        "📁 Model Upload": "show_model_upload_page",
+        "📋 Schema Definition": "show_schema_definition_page",
+        "🎲 Data Generation": "show_data_generation_page",
+        "🧪 Model Testing": "show_model_testing_page",
+        "📊 Results & Analytics": "show_results_page",
+        "📈 Explainability": "show_explainability_page"
+    }
     
-    # Route to appropriate page
+    # Create navigation buttons
+    with st.sidebar:
+        for nav_label in nav_buttons.keys():
+            button_type = "primary" if nav_label == st.session_state.current_page else "secondary"
+            if st.button(
+                nav_label,
+                type=button_type,
+                key=f"nav_{nav_label}",
+                use_container_width=True
+            ):
+                st.session_state.current_page = nav_label
+    
+    # Route to appropriate page based on current_page state
     if st.session_state.current_page == "🏠 Home":
         show_home_page()
     elif st.session_state.current_page == "📁 Model Upload":
@@ -125,8 +157,6 @@ def main():
         show_results_page()
     elif st.session_state.current_page == "📈 Explainability":
         show_explainability_page()
-    elif st.session_state.current_page == "💾 Session Management":
-        show_session_management_page()
 
 def show_home_page():
     """Display the home page with overview and instructions."""
@@ -151,7 +181,6 @@ def show_home_page():
         - **Performance Testing**: Measure latency, throughput, and accuracy
         - **Drift Detection**: Simulate and detect data drift
         - **Explainability**: SHAP-based model explanations
-        - **Session Management**: Track and compare test runs over time
         
         ### 📋 Getting Started
         
@@ -164,18 +193,6 @@ def show_home_page():
     
     with col2:
         st.markdown("### 📊 Current Status")
-        
-        # Show current session status
-        if st.session_state.current_session_id:
-            session_data = st.session_state.session_manager.get_current_session()
-            if session_data:
-                st.success(f"✅ Active Session: {session_data['session_name']}")
-                st.info(f"📅 Created: {session_data['created_at'][:10]}")
-                st.info(f"🧪 Test Runs: {len(session_data['test_runs'])}")
-            else:
-                st.warning("⚠️ Session data not found")
-        else:
-            st.info("ℹ️ No active session")
         
         # Show model status
         if st.session_state.model_loader.model is not None:
@@ -197,26 +214,16 @@ def show_home_page():
     # Quick actions
     st.markdown("### ⚡ Quick Actions")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("🆕 Create New Session", use_container_width=True):
-            session_name = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            session_id = st.session_state.session_manager.create_session(session_name)
-            st.session_state.current_session_id = session_id
-            st.success(f"Created new session: {session_name}")
-            st.rerun()
-    
-    with col2:
         if st.button("📁 Upload Model", use_container_width=True):
             st.session_state.current_page = "📁 Model Upload"
-            st.rerun()
     
-    with col3:
+    with col2:
         if st.button("🧪 Run Tests", use_container_width=True):
             if st.session_state.model_loader.model is not None:
                 st.session_state.current_page = "🧪 Model Testing"
-                st.rerun()
             else:
                 st.error("Please upload a model first")
 
@@ -286,10 +293,6 @@ def show_model_upload_page():
                             
                             st.success("✅ Schema created from model features!")
                             st.rerun()
-                    
-                    # Update session with model info
-                    if st.session_state.current_session_id:
-                        st.session_state.session_manager.update_model_info(model_info)
                 
                 else:
                     st.error("❌ Failed to load model. Please check the file format.")
@@ -309,7 +312,8 @@ def show_model_upload_page():
     if st.button("Generate Sample Model for Testing"):
         with st.spinner("Creating sample model..."):
             try:
-                sample_path = st.session_state.model_loader.create_sample_model()
+                from model_utils import create_sample_model
+                sample_path = create_sample_model()
                 success = st.session_state.model_loader.load_model(sample_path)
                 
                 if success:
@@ -351,10 +355,18 @@ def show_schema_definition_page():
         st.warning("⚠️ No schema defined")
     
     # Schema definition options
-    tab1, tab2, tab3 = st.tabs(["Manual Definition", "CSV Auto-Detection", "Default Schema"])
+    st.markdown("### 📝 Schema Definition Options")
     
-    with tab1:
-        st.markdown("### ✏️ Manual Schema Definition")
+    # Create a more visual selection
+    option = st.radio(
+        "Choose how to define your schema:",
+        ["Manual Definition", "CSV Auto-Detection", "Default Schema"],
+        horizontal=True
+    )
+    
+    if option == "Manual Definition":
+        st.markdown("---")
+        st.markdown("#### ✏️ Manual Schema Definition")
         
         # Add new feature
         with st.expander("Add New Feature"):
@@ -362,7 +374,8 @@ def show_schema_definition_page():
             
             with col1:
                 feature_name = st.text_input("Feature Name", key="new_feature_name")
-                feature_type = st.selectbox("Data Type", ["float64", "int64", "category"], key="new_feature_type")
+                st.write("**Data Type:**")
+                feature_type = st.radio("", ["float64", "int64", "category"], key="new_feature_type", horizontal=True)
             
             with col2:
                 if feature_type in ["float64", "int64"]:
@@ -419,8 +432,9 @@ def show_schema_definition_page():
                         st.success(f"✅ Removed feature: {feature.name}")
                         st.rerun()
     
-    with tab2:
-        st.markdown("### 📄 CSV Auto-Detection")
+    elif option == "CSV Auto-Detection":
+        st.markdown("---")
+        st.markdown("#### 📄 CSV Auto-Detection")
         
         uploaded_csv = st.file_uploader(
             "Upload CSV file for schema auto-detection",
@@ -453,8 +467,9 @@ def show_schema_definition_page():
                 except Exception as e:
                     st.error(f"❌ Error processing CSV: {str(e)}")
     
-    with tab3:
-        st.markdown("### 🎯 Default Schema")
+    elif option == "Default Schema":
+        st.markdown("---")
+        st.markdown("#### 🎯 Default Schema")
         
         n_features = st.number_input("Number of features", min_value=1, max_value=20, value=5)
         
@@ -521,10 +536,12 @@ def show_data_generation_page():
     
     with col1:
         n_samples = st.number_input("Number of samples", min_value=10, max_value=10000, value=1000)
-        distribution_type = st.selectbox(
-            "Distribution type",
+        st.write("**Distribution type:**")
+        distribution_type = st.radio(
+            "",
             ["uniform", "normal", "mixed"],
-            help="Choose the distribution for generating numeric features"
+            help="Choose the distribution for generating numeric features",
+            horizontal=True
         )
     
     with col2:
@@ -569,10 +586,12 @@ def show_data_generation_page():
         col1, col2 = st.columns(2)
         
         with col1:
-            drift_type = st.selectbox(
-                "Drift type",
+            st.write("**Drift type:**")
+            drift_type = st.radio(
+                "",
                 ["mean_shift", "variance_shift", "distribution_shift"],
-                help="Type of drift to simulate"
+                help="Type of drift to simulate",
+                horizontal=True
             )
             drift_magnitude = st.slider("Drift magnitude", 0.0, 2.0, 0.5, 0.1)
         
@@ -584,11 +603,11 @@ def show_data_generation_page():
             ]
             
             if numeric_features:
-                affected_features = st.multiselect(
-                    "Affected features",
-                    numeric_features,
-                    default=numeric_features[:2] if len(numeric_features) >= 2 else numeric_features
-                )
+                st.write("**Affected features:**")
+                affected_features = []
+                for feature in numeric_features:
+                    if st.checkbox(feature, value=feature in numeric_features[:2] if len(numeric_features) >= 2 else feature == numeric_features[0]):
+                        affected_features.append(feature)
             else:
                 affected_features = []
                 st.info("No numeric features available for drift simulation")
@@ -610,6 +629,7 @@ def show_data_generation_page():
                     # Compare original vs drift data
                     st.markdown("### 📊 Original vs Drift Data Comparison")
                     
+                    # Statistical comparison
                     for feature in affected_features:
                         col1, col2 = st.columns(2)
                         
@@ -622,6 +642,112 @@ def show_data_generation_page():
                             st.write(f"**Drift {feature}:**")
                             st.write(f"Mean: {drift_data[feature].mean():.3f}")
                             st.write(f"Std: {drift_data[feature].std():.3f}")
+                    
+                    # Visual comparison graphs
+                    st.markdown("#### 📈 Distribution Comparison")
+                    
+                    # Create comparison plots for each affected feature
+                    for feature in affected_features:
+                        st.markdown(f"**{feature} Distribution Comparison**")
+                        
+                        # Create histogram comparison
+                        fig = go.Figure()
+                        
+                        # Original data
+                        fig.add_trace(go.Histogram(
+                            x=st.session_state.synthetic_data[feature],
+                            name='Original Data',
+                            opacity=0.7,
+                            nbinsx=30
+                        ))
+                        
+                        # Drift data
+                        fig.add_trace(go.Histogram(
+                            x=drift_data[feature],
+                            name='Drift Data',
+                            opacity=0.7,
+                            nbinsx=30
+                        ))
+                        
+                        fig.update_layout(
+                            title=f'{feature} - Original vs Drift Distribution',
+                            xaxis_title=feature,
+                            yaxis_title='Frequency',
+                            barmode='overlay',
+                            height=400
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Box plot comparison
+                    st.markdown("#### 📦 Box Plot Comparison")
+                    
+                    # Prepare data for box plot
+                    comparison_data = []
+                    for feature in affected_features:
+                        # Original data
+                        for value in st.session_state.synthetic_data[feature]:
+                            comparison_data.append({
+                                'Feature': feature,
+                                'Value': value,
+                                'Type': 'Original'
+                            })
+                        
+                        # Drift data
+                        for value in drift_data[feature]:
+                            comparison_data.append({
+                                'Feature': feature,
+                                'Value': value,
+                                'Type': 'Drift'
+                            })
+                    
+                    if comparison_data:
+                        df_comparison = pd.DataFrame(comparison_data)
+                        
+                        # Create box plot
+                        fig = px.box(
+                            df_comparison,
+                            x='Feature',
+                            y='Value',
+                            color='Type',
+                            title='Feature Distribution Comparison (Box Plots)',
+                            height=500
+                        )
+                        
+                        fig.update_layout(
+                            xaxis_title='Features',
+                            yaxis_title='Values'
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Summary statistics table
+                    st.markdown("#### 📋 Summary Statistics")
+                    
+                    summary_data = []
+                    for feature in affected_features:
+                        original_mean = st.session_state.synthetic_data[feature].mean()
+                        original_std = st.session_state.synthetic_data[feature].std()
+                        drift_mean = drift_data[feature].mean()
+                        drift_std = drift_data[feature].std()
+                        
+                        # Calculate change
+                        mean_change = ((drift_mean - original_mean) / original_mean * 100) if original_mean != 0 else 0
+                        std_change = ((drift_std - original_std) / original_std * 100) if original_std != 0 else 0
+                        
+                        summary_data.append({
+                            'Feature': feature,
+                            'Original Mean': f"{original_mean:.3f}",
+                            'Drift Mean': f"{drift_mean:.3f}",
+                            'Mean Change %': f"{mean_change:.1f}%",
+                            'Original Std': f"{original_std:.3f}",
+                            'Drift Std': f"{drift_std:.3f}",
+                            'Std Change %': f"{std_change:.1f}%"
+                        })
+                    
+                    if summary_data:
+                        df_summary = pd.DataFrame(summary_data)
+                        st.dataframe(df_summary, use_container_width=True)
                     
                 except Exception as e:
                     st.error(f"❌ Error generating drift data: {str(e)}")
@@ -682,7 +808,6 @@ def show_model_testing_page():
         n_iterations = st.number_input("Timing iterations", min_value=1, max_value=10, value=3)
     
     with col2:
-        include_drift_test = st.checkbox("Include drift detection", value=True)
         include_explainability = st.checkbox("Include explainability analysis", value=True)
     
     # Run tests
@@ -691,14 +816,13 @@ def show_model_testing_page():
             try:
                 # Prepare data
                 X = st.session_state.synthetic_data.values
-                reference_data = st.session_state.synthetic_data
                 
                 # Run comprehensive evaluation
                 results = st.session_state.metrics_aggregator.run_comprehensive_evaluation(
                     model=st.session_state.model_loader.model,
                     X=X,
-                    reference_data=reference_data if include_drift_test else None,
-                    test_name=test_name
+                    test_name=test_name,
+                    n_iterations=n_iterations
                 )
                 
                 # Add explainability if requested
@@ -717,14 +841,13 @@ def show_model_testing_page():
                 # Store results
                 st.session_state.test_results = results
                 
-                # Add to session
-                if st.session_state.current_session_id:
-                    st.session_state.session_manager.add_test_run(results, test_name)
-                
-                st.success("✅ Tests completed successfully!")
+                # Save results to storage
+                file_path = st.session_state.results_storage.save_test_results(results, test_name)
+                st.success(f"✅ Tests completed successfully! Results saved to {file_path}")
                 
             except Exception as e:
                 st.error(f"❌ Error running tests: {str(e)}")
+                logger.error(f"Test error: {str(e)}", exc_info=True)
     
     # Display results if available
     if st.session_state.test_results:
@@ -752,26 +875,6 @@ def show_model_testing_page():
                 else:
                     st.metric("Accuracy", "N/A")
         
-        # Drift detection results
-        if 'drift' in st.session_state.test_results:
-            drift = st.session_state.test_results['drift']
-            
-            st.markdown("#### 🌊 Drift Detection")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                drift_detected = drift.get('overall_drift_detected', False)
-                drift_score = drift.get('overall_drift_score', 0)
-                
-                if drift_detected:
-                    st.error(f"🚨 Drift Detected! Score: {drift_score:.2f}")
-                else:
-                    st.success(f"✅ No Significant Drift. Score: {drift_score:.2f}")
-            
-            with col2:
-                summary = drift.get('summary', {})
-                st.info(f"Features with drift: {summary.get('n_features_with_drift', 0)}/{summary.get('total_features', 0)}")
 
 def show_results_page():
     """Display the results and analytics page."""
@@ -827,62 +930,6 @@ def show_results_page():
         with st.expander("📋 Detailed Performance Metrics"):
             st.json(performance)
     
-    # Drift analysis
-    if 'drift' in results:
-        st.markdown("### 🌊 Drift Analysis")
-        
-        drift = results['drift']
-        
-        # Overall drift score
-        drift_score = drift.get('overall_drift_score', 0)
-        
-        # Create drift score gauge
-        fig = go.Figure(go.Indicator(
-            mode = "gauge+number+delta",
-            value = drift_score,
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': "Overall Drift Score"},
-            gauge = {
-                'axis': {'range': [None, 1]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [0, 0.3], 'color': "lightgray"},
-                    {'range': [0.3, 0.7], 'color': "yellow"},
-                    {'range': [0.7, 1], 'color': "red"}
-                ],
-                'threshold': {
-                    'line': {'color': "red", 'width': 4},
-                    'thickness': 0.75,
-                    'value': 0.5
-                }
-            }
-        ))
-        
-        fig.update_layout(height=300)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Feature-level drift
-        if 'feature_drift' in drift:
-            feature_drift_data = []
-            for feature, drift_info in drift['feature_drift'].items():
-                feature_drift_data.append({
-                    'Feature': feature,
-                    'Drift Score': drift_info.get('drift_score', 0),
-                    'Drift Detected': drift_info.get('drift_detected', False)
-                })
-            
-            if feature_drift_data:
-                df_drift = pd.DataFrame(feature_drift_data)
-                
-                fig = px.bar(
-                    df_drift,
-                    x='Feature',
-                    y='Drift Score',
-                    color='Drift Detected',
-                    title="Feature-level Drift Scores",
-                    color_discrete_map={True: 'red', False: 'green'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
     
     # Export results
     st.markdown("---")
@@ -989,120 +1036,6 @@ def show_explainability_page():
             st.metric("Mean Importance", f"{summary.get('mean_importance', 0):.4f}")
             if 'top_feature_percentage' in summary:
                 st.metric("Top Feature %", f"{summary.get('top_feature_percentage', 0):.1f}%")
-
-def show_session_management_page():
-    """Display the session management page."""
-    
-    st.markdown("## 💾 Session Management")
-    
-    # Current session info
-    if st.session_state.current_session_id:
-        session_data = st.session_state.session_manager.get_current_session()
-        if session_data:
-            st.success(f"✅ Active Session: {session_data['session_name']}")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Created", session_data['created_at'][:10])
-            with col2:
-                st.metric("Test Runs", len(session_data['test_runs']))
-            with col3:
-                st.metric("Status", session_data['status'])
-        else:
-            st.warning("⚠️ Session data not found")
-    else:
-        st.info("ℹ️ No active session")
-    
-    # Session actions
-    st.markdown("### 🎛️ Session Actions")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("🆕 Create New Session", use_container_width=True):
-            session_name = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            session_id = st.session_state.session_manager.create_session(session_name)
-            st.session_state.current_session_id = session_id
-            st.success(f"Created new session: {session_name}")
-            st.rerun()
-    
-    with col2:
-        if st.button("📊 View Session History", use_container_width=True):
-            st.rerun()
-    
-    with col3:
-        if st.button("💾 Export Session", use_container_width=True):
-            if st.session_state.current_session_id:
-                export_path = f"session_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                success = st.session_state.session_manager.export_session(
-                    st.session_state.current_session_id, export_path
-                )
-                if success:
-                    st.success(f"Session exported to {export_path}")
-                else:
-                    st.error("Failed to export session")
-            else:
-                st.error("No active session to export")
-    
-    # Session history
-    st.markdown("### 📚 Session History")
-    
-    sessions = st.session_state.session_manager.list_sessions()
-    
-    if sessions:
-        # Create sessions DataFrame
-        sessions_df = pd.DataFrame(sessions)
-        
-        # Display sessions table
-        st.dataframe(
-            sessions_df[['session_name', 'created_at', 'total_test_runs', 'status']],
-            use_container_width=True
-        )
-        
-        # Session selection
-        selected_session = st.selectbox(
-            "Select a session to load:",
-            options=[s['session_id'] for s in sessions],
-            format_func=lambda x: next(s['session_name'] for s in sessions if s['session_id'] == x)
-        )
-        
-        if st.button("📂 Load Selected Session"):
-            success = st.session_state.session_manager.load_session(selected_session)
-            if success:
-                st.session_state.current_session_id = selected_session
-                st.success("Session loaded successfully!")
-                st.rerun()
-            else:
-                st.error("Failed to load session")
-    else:
-        st.info("No sessions found. Create a new session to get started.")
-    
-    # Test runs history
-    if st.session_state.current_session_id:
-        st.markdown("### 🧪 Test Runs History")
-        
-        test_runs = st.session_state.session_manager.get_test_runs()
-        
-        if test_runs:
-            # Display test runs
-            for i, test_run in enumerate(test_runs):
-                with st.expander(f"Test Run {i+1}: {test_run['test_name']} ({test_run['timestamp'][:16]})"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write(f"**Test Name:** {test_run['test_name']}")
-                        st.write(f"**Timestamp:** {test_run['timestamp']}")
-                        st.write(f"**Status:** {test_run['status']}")
-                    
-                    with col2:
-                        results = test_run.get('results', {})
-                        if 'performance' in results:
-                            perf = results['performance']
-                            st.write(f"**Latency:** {perf.get('latency_mean_ms', 0):.2f} ms")
-                            st.write(f"**Throughput:** {perf.get('throughput_preds_per_sec', 0):.0f} pred/s")
-                            st.write(f"**Accuracy:** {perf.get('accuracy', 0):.2%}" if perf.get('accuracy') else "**Accuracy:** N/A")
-        else:
-            st.info("No test runs in current session")
 
 if __name__ == "__main__":
     main()
