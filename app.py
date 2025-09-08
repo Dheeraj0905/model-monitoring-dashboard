@@ -15,6 +15,7 @@ import json
 import time
 from datetime import datetime
 import logging
+from typing import Dict, List, Any, Optional
 
 # Import our custom modules
 from model_utils import ModelLoader
@@ -116,43 +117,48 @@ def main():
     # Header
     st.markdown('<h1 class="main-header">🤖 ML Model Monitoring Dashboard</h1>', unsafe_allow_html=True)
     
-    # Sidebar navigation with buttons
+    # Sidebar navigation with radio buttons
     st.sidebar.title("Navigation")
     
-    # Navigation buttons - simplified version
-    nav_buttons = {
-        "🏠 Home": "show_home_page",
-        "📁 Model Upload": "show_model_upload_page",
-        "📋 Schema Definition": "show_schema_definition_page",
-        "🎲 Data Generation": "show_data_generation_page",
-        "🧪 Model Testing": "show_model_testing_page",
-        "📊 Results & Analytics": "show_results_page",
-        "📈 Explainability": "show_explainability_page"
-    }
+    # Navigation options - using radio buttons to avoid dropdown and double-tap issues
+    nav_options = [
+        "🏠 Home",
+        "📁 Model Upload", 
+        "📊 Dataset Upload",
+        "📋 Schema Definition",
+        "📊 Raw Data Testing",
+        "🎲 Data Generation",
+        "⚡ Performance Testing",
+        "📊 Results & Analytics",
+        "📈 Explainability"
+    ]
     
-    # Create navigation buttons
-    with st.sidebar:
-        for nav_label in nav_buttons.keys():
-            button_type = "primary" if nav_label == st.session_state.current_page else "secondary"
-            if st.button(
-                nav_label,
-                type=button_type,
-                key=f"nav_{nav_label}",
-                use_container_width=True
-            ):
-                st.session_state.current_page = nav_label
+    # Use radio buttons for navigation
+    selected_page = st.sidebar.radio(
+        "Choose a page:",
+        nav_options,
+        index=nav_options.index(st.session_state.current_page) if st.session_state.current_page in nav_options else 0,
+        key="page_nav_radio"
+    )
+    
+    # Update current page
+    st.session_state.current_page = selected_page
     
     # Route to appropriate page based on current_page state
     if st.session_state.current_page == "🏠 Home":
         show_home_page()
     elif st.session_state.current_page == "📁 Model Upload":
         show_model_upload_page()
+    elif st.session_state.current_page == "📊 Dataset Upload":
+        show_dataset_upload_page()
     elif st.session_state.current_page == "📋 Schema Definition":
         show_schema_definition_page()
+    elif st.session_state.current_page == "📊 Raw Data Testing":
+        show_raw_data_testing_page()
     elif st.session_state.current_page == "🎲 Data Generation":
         show_data_generation_page()
-    elif st.session_state.current_page == "🧪 Model Testing":
-        show_model_testing_page()
+    elif st.session_state.current_page == "⚡ Performance Testing":
+        show_performance_testing_page()
     elif st.session_state.current_page == "📊 Results & Analytics":
         show_results_page()
     elif st.session_state.current_page == "📈 Explainability":
@@ -176,6 +182,8 @@ def show_home_page():
         ### 🚀 Key Features
         
         - **Model Upload**: Upload and validate your trained models (.pkl files)
+        - **Pipeline Support**: Full support for scikit-learn pipelines with preprocessing
+        - **Raw Data Testing**: Upload CSV files and let pipelines handle preprocessing automatically
         - **Schema Definition**: Define or auto-detect input feature schemas
         - **Synthetic Data Generation**: Generate test data with various distributions
         - **Performance Testing**: Measure latency, throughput, and accuracy
@@ -184,6 +192,13 @@ def show_home_page():
         
         ### 📋 Getting Started
         
+        **Option 1: Pipeline-Based Workflow (Recommended)**
+        1. **Upload a Pipeline Model**: Upload your scikit-learn pipeline (.pkl file)
+        2. **Upload Raw Data**: Provide your raw CSV data for testing
+        3. **Run Pipeline Tests**: Let the pipeline handle all preprocessing automatically
+        4. **Analyze Results**: Review performance metrics and explanations
+        
+        **Option 2: Traditional Workflow**
         1. **Upload a Model**: Start by uploading your trained model file
         2. **Define Schema**: Specify your input feature schema
         3. **Generate Data**: Create synthetic test data
@@ -200,6 +215,10 @@ def show_home_page():
             st.success("✅ Model Loaded")
             st.info(f"📊 Features: {model_info['n_features']}")
             st.info(f"🔧 Type: {model_info['model_info']['type']}")
+            if model_info['is_pipeline']:
+                st.success("🔄 Pipeline Model Detected")
+            else:
+                st.info("🔧 Regular Model")
         else:
             st.info("ℹ️ No model loaded")
         
@@ -214,18 +233,455 @@ def show_home_page():
     # Quick actions
     st.markdown("### ⚡ Quick Actions")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("📁 Upload Model", use_container_width=True):
+        if st.button("📁 Upload Model", use_container_width=True, key="quick_upload"):
             st.session_state.current_page = "📁 Model Upload"
     
     with col2:
-        if st.button("🧪 Run Tests", use_container_width=True):
+        if st.button("📊 Upload Dataset", use_container_width=True, key="quick_dataset"):
+            st.session_state.current_page = "📊 Dataset Upload"
+    
+    with col3:
+        if st.button("⚡ Performance Testing", use_container_width=True, key="quick_performance"):
             if st.session_state.model_loader.model is not None:
-                st.session_state.current_page = "🧪 Model Testing"
+                st.session_state.current_page = "⚡ Performance Testing"
             else:
                 st.error("Please upload a model first")
+
+def show_dataset_upload_page():
+    """Display the dataset upload page for model evaluation."""
+    
+    st.markdown("## 📊 Dataset Upload")
+    st.markdown("Upload your test dataset with true labels to evaluate model performance and calculate accuracy metrics.")
+    
+    # Check if model is loaded
+    if st.session_state.model_loader.model is None:
+        st.error("❌ Please upload a model first")
+        return
+    
+    model_info = st.session_state.model_loader.get_model_info()
+    
+    # File uploader for dataset
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file with your test dataset",
+        type=['csv'],
+        help="Upload your test dataset containing features and true labels"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # Load the dataset
+            dataset = pd.read_csv(uploaded_file)
+            
+            st.success(f"✅ Dataset loaded successfully! Shape: {dataset.shape}")
+            
+            # Display data preview
+            st.markdown("### 📋 Dataset Preview")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**First 5 rows:**")
+                st.dataframe(dataset.head())
+            
+            with col2:
+                st.markdown("**Dataset Info:**")
+                st.json({
+                    "Rows": len(dataset),
+                    "Columns": len(dataset.columns),
+                    "Column Names": list(dataset.columns),
+                    "Missing Values": dataset.isnull().sum().sum()
+                })
+            
+            # Target column selection
+            st.markdown("### 🎯 Target Column Selection")
+            target_column = st.selectbox(
+                "Select the target column (true labels):",
+                options=dataset.columns.tolist(),
+                key="target_column_selector"
+            )
+            
+            if target_column:
+                # Separate features and target
+                feature_columns = [col for col in dataset.columns if col != target_column]
+                X = dataset[feature_columns]
+                y = dataset[target_column]
+                
+                # Display target distribution
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Target Distribution:**")
+                    if model_info['task_type'] == 'classification':
+                        target_counts = y.value_counts()
+                        st.bar_chart(target_counts)
+                        st.write(f"Unique classes: {len(target_counts)}")
+                    else:
+                        st.write(f"Target statistics:")
+                        st.write(f"- Mean: {y.mean():.3f}")
+                        st.write(f"- Std: {y.std():.3f}")
+                        st.write(f"- Min: {y.min():.3f}")
+                        st.write(f"- Max: {y.max():.3f}")
+                
+                with col2:
+                    st.markdown("**Feature Alignment:**")
+                    expected_features = model_info['raw_feature_names'] if model_info['is_pipeline'] else model_info['feature_names']
+                    
+                    if expected_features and not all(f.startswith(('feature_', 'raw_feature_')) for f in expected_features):
+                        missing_features = set(expected_features) - set(feature_columns)
+                        extra_features = set(feature_columns) - set(expected_features)
+                        
+                        if missing_features:
+                            st.warning(f"Missing features: {list(missing_features)}")
+                        if extra_features:
+                            st.info(f"Extra features: {list(extra_features)}")
+                        if not missing_features and not extra_features:
+                            st.success("✅ Perfect feature alignment!")
+                    else:
+                        st.info("Features will be used in order")
+                
+                # Model evaluation
+                if st.button("🚀 Evaluate Model", type="primary", key="evaluate_model_btn"):
+                    with st.spinner("Evaluating model performance..."):
+                        try:
+                            # Calculate metrics
+                            metrics_results = st.session_state.model_loader.calculate_metrics(X, y)
+                            
+                            if 'error' not in metrics_results:
+                                # Store results in session state
+                                st.session_state.evaluation_results = {
+                                    'metrics': metrics_results,
+                                    'dataset_info': {
+                                        'shape': dataset.shape,
+                                        'target_column': target_column,
+                                        'feature_columns': feature_columns
+                                    },
+                                    'model_info': model_info,
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                st.success("✅ Model evaluation completed!")
+                                
+                                # Display results immediately
+                                display_evaluation_results(metrics_results, model_info['task_type'])
+                                
+                            else:
+                                st.error(f"❌ Evaluation failed: {metrics_results['error']}")
+                                
+                        except Exception as e:
+                            st.error(f"❌ Error during evaluation: {str(e)}")
+                            logger.error(f"Evaluation error: {str(e)}", exc_info=True)
+                
+                # Display previous results if available
+                if hasattr(st.session_state, 'evaluation_results') and st.session_state.evaluation_results:
+                    st.markdown("---")
+                    st.markdown("### 📊 Latest Evaluation Results")
+                    display_evaluation_results(
+                        st.session_state.evaluation_results['metrics'],
+                        st.session_state.evaluation_results['model_info']['task_type']
+                    )
+                    
+        except Exception as e:
+            st.error(f"❌ Error loading dataset: {str(e)}")
+
+
+def display_evaluation_results(metrics: Dict[str, Any], task_type: str):
+    """Display evaluation results based on task type."""
+    
+    if task_type == "classification":
+        display_classification_results(metrics)
+    elif task_type == "regression":
+        display_regression_results(metrics)
+    else:
+        st.warning("Unknown task type - displaying raw metrics")
+        st.json(metrics)
+
+
+def display_classification_results(metrics: Dict[str, Any]):
+    """Display classification evaluation results."""
+    
+    # Key metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Accuracy", f"{metrics.get('accuracy', 0):.3f}")
+    
+    with col2:
+        st.metric("Precision", f"{metrics.get('precision', 0):.3f}")
+    
+    with col3:
+        st.metric("Recall", f"{metrics.get('recall', 0):.3f}")
+    
+    with col4:
+        st.metric("F1 Score", f"{metrics.get('f1_score', 0):.3f}")
+    
+    # Confusion Matrix
+    if 'confusion_matrix' in metrics:
+        st.markdown("### 📊 Confusion Matrix")
+        cm = np.array(metrics['confusion_matrix'])
+        
+        # Create heatmap
+        fig = px.imshow(
+            cm,
+            text_auto=True,
+            aspect="auto",
+            title="Confusion Matrix",
+            labels=dict(x="Predicted", y="Actual")
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Classification Report
+    if 'classification_report' in metrics:
+        st.markdown("### 📋 Detailed Classification Report")
+        
+        report_df = pd.DataFrame(metrics['classification_report']).transpose()
+        st.dataframe(report_df)
+    
+    # AUC if available
+    if 'auc_roc' in metrics:
+        st.markdown(f"### 📈 AUC-ROC Score: {metrics['auc_roc']:.3f}")
+
+
+def display_regression_results(metrics: Dict[str, Any]):
+    """Display regression evaluation results."""
+    
+    # Key metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("R² Score", f"{metrics.get('r2_score', 0):.3f}")
+    
+    with col2:
+        st.metric("RMSE", f"{metrics.get('root_mean_squared_error', 0):.3f}")
+    
+    with col3:
+        st.metric("MAE", f"{metrics.get('mean_absolute_error', 0):.3f}")
+    
+    with col4:
+        st.metric("MAPE (%)", f"{metrics.get('mean_absolute_percentage_error', 0):.2f}")
+    
+    # Additional metrics
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.metric("MSE", f"{metrics.get('mean_squared_error', 0):.3f}")
+    
+    with col2:
+        st.metric("Max Error", f"{metrics.get('max_error', 0):.3f}")
+    
+    # Residuals plot
+    if 'residuals' in metrics and metrics['residuals']:
+        st.markdown("### 📈 Residuals Plot")
+        residuals = metrics['residuals']
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            y=residuals,
+            mode='markers',
+            name='Residuals',
+            marker=dict(size=6, opacity=0.7)
+        ))
+        fig.add_hline(y=0, line_dash="dash", line_color="red")
+        fig.update_layout(
+            title="Residuals (Actual - Predicted)",
+            xaxis_title="Sample Index",
+            yaxis_title="Residual Value",
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def show_performance_testing_page():
+    """Display the performance testing page (renamed from model testing)."""
+    
+    st.markdown("## ⚡ Performance Testing")
+    
+    # Check prerequisites
+    if st.session_state.model_loader.model is None:
+        st.error("❌ Please upload a model first")
+        return
+    
+    if not st.session_state.schema_manager.schema:
+        st.error("❌ Please define a schema first")
+        return
+    
+    if 'synthetic_data' not in st.session_state or st.session_state.synthetic_data is None:
+        st.error("❌ Please generate synthetic data first")
+        return
+    
+    # Test configuration
+    st.markdown("### ⚙️ Performance Test Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        test_name = st.text_input("Test Name", value=f"perf_test_{datetime.now().strftime('%H%M%S')}")
+        n_iterations = st.number_input("Timing iterations", min_value=1, max_value=10, value=3)
+    
+    with col2:
+        include_explainability = st.checkbox("Include SHAP analysis", value=True)
+        include_drift_simulation = st.checkbox("Include drift simulation", value=True)
+    
+    # Run tests
+    if st.button("🚀 Run Performance Tests", type="primary"):
+        with st.spinner("Running performance tests..."):
+            try:
+                # Prepare data
+                X = st.session_state.synthetic_data.values
+                
+                # Run comprehensive evaluation
+                results = st.session_state.metrics_aggregator.run_comprehensive_evaluation(
+                    model=st.session_state.model_loader.model,
+                    X=X,
+                    test_name=test_name,
+                    n_iterations=n_iterations
+                )
+                
+                # Add explainability if requested
+                if include_explainability:
+                    try:
+                        explainability_results = st.session_state.explainability_analyzer.analyze_model(
+                            model=st.session_state.model_loader.model,
+                            X=X,
+                            feature_names=st.session_state.schema_manager.get_feature_names()
+                        )
+                        results['explainability'] = explainability_results
+                    except Exception as e:
+                        st.warning(f"SHAP analysis failed: {str(e)}")
+                        results['explainability'] = {'error': str(e)}
+                
+                # Add drift simulation if requested
+                if include_drift_simulation:
+                    try:
+                        drift_results = simulate_data_drift(X, st.session_state.model_loader.model)
+                        results['drift_simulation'] = drift_results
+                    except Exception as e:
+                        st.warning(f"Drift simulation failed: {str(e)}")
+                        results['drift_simulation'] = {'error': str(e)}
+                
+                # Store results
+                st.session_state.performance_test_results = results
+                
+                # Save results to storage
+                file_path = st.session_state.results_storage.save_test_results(results, test_name)
+                st.success(f"✅ Performance tests completed successfully! Results saved to {file_path}")
+                
+                # Display results
+                display_performance_results(results)
+                
+            except Exception as e:
+                st.error(f"❌ Error running performance tests: {str(e)}")
+                logger.error(f"Performance test error: {str(e)}", exc_info=True)
+
+
+def simulate_data_drift(X_original: np.ndarray, model) -> Dict[str, Any]:
+    """Simulate data drift and compare predictions."""
+    
+    try:
+        # Create drifted data by adding noise and shifting distribution
+        X_drifted = X_original.copy()
+        
+        # Add systematic bias (shift mean)
+        shift_factor = 0.5
+        X_drifted = X_drifted + np.random.normal(0, shift_factor, X_drifted.shape)
+        
+        # Get predictions for both datasets
+        pred_original = model.predict(X_original)
+        pred_drifted = model.predict(X_drifted)
+        
+        # Calculate drift metrics
+        pred_diff = np.abs(pred_original - pred_drifted)
+        
+        results = {
+            'original_predictions': pred_original[:100].tolist(),
+            'drifted_predictions': pred_drifted[:100].tolist(),
+            'prediction_differences': pred_diff[:100].tolist(),
+            'mean_prediction_change': float(np.mean(pred_diff)),
+            'max_prediction_change': float(np.max(pred_diff)),
+            'drift_severity': 'High' if np.mean(pred_diff) > 0.5 else 'Medium' if np.mean(pred_diff) > 0.1 else 'Low'
+        }
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error in drift simulation: {str(e)}")
+        return {'error': str(e)}
+
+
+def display_performance_results(results: Dict[str, Any]):
+    """Display performance test results."""
+    
+    if not results:
+        st.warning("No results to display")
+        return
+    
+    # Performance metrics
+    if 'metrics' in results:
+        st.markdown("### ⚡ Performance Metrics")
+        metrics = results['metrics']
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Avg Latency (ms)", f"{metrics.get('avg_latency', 0)*1000:.2f}")
+        
+        with col2:
+            st.metric("Throughput (pred/s)", f"{metrics.get('throughput', 0):.1f}")
+        
+        with col3:
+            st.metric("Total Time (s)", f"{metrics.get('total_time', 0):.3f}")
+        
+        with col4:
+            st.metric("Predictions", metrics.get('n_predictions', 0))
+    
+    # Drift simulation results
+    if 'drift_simulation' in results and 'error' not in results['drift_simulation']:
+        st.markdown("### 🌊 Drift Simulation Results")
+        drift = results['drift_simulation']
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Mean Change", f"{drift.get('mean_prediction_change', 0):.3f}")
+        
+        with col2:
+            st.metric("Max Change", f"{drift.get('max_prediction_change', 0):.3f}")
+        
+        with col3:
+            severity = drift.get('drift_severity', 'Unknown')
+            color = 'red' if severity == 'High' else 'orange' if severity == 'Medium' else 'green'
+            st.markdown(f"**Drift Severity:** <span style='color: {color}'>{severity}</span>", unsafe_allow_html=True)
+        
+        # Drift comparison plot
+        if 'original_predictions' in drift and 'drifted_predictions' in drift:
+            st.markdown("### 📊 Prediction Comparison (Original vs Drifted)")
+            
+            original = drift['original_predictions']
+            drifted = drift['drifted_predictions']
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                y=original,
+                mode='lines+markers',
+                name='Original Data',
+                line=dict(color='blue')
+            ))
+            fig.add_trace(go.Scatter(
+                y=drifted,
+                mode='lines+markers',
+                name='Drifted Data',
+                line=dict(color='red')
+            ))
+            
+            fig.update_layout(
+                title="Prediction Comparison: Original vs Drifted Data",
+                xaxis_title="Sample Index",
+                yaxis_title="Prediction Value",
+                height=400
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
 
 def show_model_upload_page():
     """Display the model upload page."""
@@ -264,18 +720,31 @@ def show_model_upload_page():
                         st.json({
                             "Model Type": model_info['model_info']['type'],
                             "Module": model_info['model_info']['module'],
+                            "Is Pipeline": model_info['is_pipeline'],
                             "Number of Features": model_info['n_features'],
+                            "Raw Features (Pipeline)": model_info['n_raw_features'] if model_info['is_pipeline'] else "N/A",
                             "Has Probabilities": model_info['has_proba']
                         })
                     
                     with col2:
                         st.markdown("### 🔧 Feature Information")
-                        if model_info['feature_names']:
-                            st.write("**Detected Features:**")
-                            for i, (name, dtype) in enumerate(zip(model_info['feature_names'], model_info['feature_types'])):
-                                st.write(f"{i+1}. {name} ({dtype})")
+                        if model_info['is_pipeline']:
+                            st.info("📦 **Pipeline Detected** - Model includes preprocessing steps")
+                            if model_info['raw_feature_names']:
+                                st.write("**Raw Input Features Expected:**")
+                                for i, name in enumerate(model_info['raw_feature_names']):
+                                    st.write(f"{i+1}. {name}")
+                            if model_info['feature_names']:
+                                with st.expander("View Processed Features"):
+                                    for i, (name, dtype) in enumerate(zip(model_info['feature_names'], model_info['feature_types'])):
+                                        st.write(f"{i+1}. {name} ({dtype})")
                         else:
-                            st.info("No feature information detected")
+                            if model_info['feature_names']:
+                                st.write("**Detected Features:**")
+                                for i, (name, dtype) in enumerate(zip(model_info['feature_names'], model_info['feature_types'])):
+                                    st.write(f"{i+1}. {name} ({dtype})")
+                            else:
+                                st.info("No feature information detected")
                     
                     # Auto-create schema if features detected
                     if model_info['feature_names']:
@@ -1036,6 +1505,255 @@ def show_explainability_page():
             st.metric("Mean Importance", f"{summary.get('mean_importance', 0):.4f}")
             if 'top_feature_percentage' in summary:
                 st.metric("Top Feature %", f"{summary.get('top_feature_percentage', 0):.1f}%")
+
+
+def show_raw_data_testing_page():
+    """Display the raw data testing page for pipeline models."""
+    
+    st.markdown("## 📊 Raw Data Testing")
+    
+    # Check prerequisites
+    if st.session_state.model_loader.model is None:
+        st.error("❌ Please upload a model first")
+        return
+    
+    model_info = st.session_state.model_loader.get_model_info()
+    
+    if not model_info['is_pipeline']:
+        st.warning("⚠️ This feature is designed for pipeline models. Your current model is not a pipeline.")
+        st.info("💡 **Tip**: Use a scikit-learn Pipeline that includes preprocessing steps and the trained model for the best experience.")
+        return
+    
+    st.markdown("""
+    ### 🔄 Pipeline-Based Testing
+    
+    Upload your raw data (CSV file) and let the pipeline handle all preprocessing automatically. 
+    This ensures consistency with your training process and provides accurate performance metrics.
+    """)
+    
+    # File uploader for raw data
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file with raw data",
+        type=['csv'],
+        help="Upload your raw dataset. The pipeline will handle all preprocessing automatically."
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # Load the raw data
+            raw_data = pd.read_csv(uploaded_file)
+            
+            st.success(f"✅ Data loaded successfully! Shape: {raw_data.shape}")
+            
+            # Display data preview
+            st.markdown("### 📋 Data Preview")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**First 5 rows:**")
+                st.dataframe(raw_data.head())
+            
+            with col2:
+                st.markdown("**Data Info:**")
+                st.json({
+                    "Rows": len(raw_data),
+                    "Columns": len(raw_data.columns),
+                    "Column Names": list(raw_data.columns),
+                    "Data Types": raw_data.dtypes.astype(str).to_dict()
+                })
+            
+            # Validate column alignment with expected raw features
+            expected_features = model_info['raw_feature_names']
+            if expected_features and set(expected_features) != {'raw_feature_0', 'raw_feature_1', 'raw_feature_2', 'raw_feature_3', 'raw_feature_4'}:
+                missing_features = set(expected_features) - set(raw_data.columns)
+                extra_features = set(raw_data.columns) - set(expected_features)
+                
+                if missing_features or extra_features:
+                    st.warning("⚠️ Column mismatch detected:")
+                    if missing_features:
+                        st.write("**Missing columns:**", list(missing_features))
+                    if extra_features:
+                        st.write("**Extra columns:**", list(extra_features))
+                    st.info("The pipeline will attempt to handle this automatically.")
+            
+            # Configuration options
+            st.markdown("### ⚙️ Testing Configuration")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                test_name = st.text_input("Test Name", value=f"pipeline_test_{datetime.now().strftime('%H%M%S')}")
+                sample_size = st.number_input("Sample Size", min_value=1, max_value=len(raw_data), value=min(1000, len(raw_data)))
+            
+            with col2:
+                include_probabilities = st.checkbox("Include Prediction Probabilities", value=True)
+                measure_performance = st.checkbox("Measure Performance Metrics", value=True)
+            
+            with col3:
+                include_explainability = st.checkbox("Include SHAP Analysis", value=True)
+                random_seed = st.number_input("Random Seed", value=42)
+            
+            # Sample the data if needed
+            if sample_size < len(raw_data):
+                np.random.seed(random_seed)
+                sample_indices = np.random.choice(len(raw_data), sample_size, replace=False)
+                test_data = raw_data.iloc[sample_indices].copy()
+                st.info(f"Using random sample of {sample_size} rows")
+            else:
+                test_data = raw_data.copy()
+            
+            # Run pipeline testing
+            if st.button("🚀 Run Pipeline Testing", type="primary"):
+                with st.spinner("Running pipeline testing..."):
+                    try:
+                        results = {}
+                        start_time = time.time()
+                        
+                        # Make predictions using the pipeline
+                        predictions = st.session_state.model_loader.predict_with_raw_data(test_data)
+                        prediction_time = time.time() - start_time
+                        
+                        results['predictions'] = predictions
+                        results['prediction_time'] = prediction_time
+                        results['test_name'] = test_name
+                        results['data_shape'] = test_data.shape
+                        
+                        # Get probabilities if available and requested
+                        if include_probabilities:
+                            probabilities = st.session_state.model_loader.predict_proba_with_raw_data(test_data)
+                            if probabilities is not None:
+                                results['probabilities'] = probabilities
+                        
+                        # Performance metrics
+                        if measure_performance:
+                            results['performance'] = {
+                                'total_time': prediction_time,
+                                'avg_time_per_sample': prediction_time / len(test_data),
+                                'throughput': len(test_data) / prediction_time,
+                                'samples_processed': len(test_data)
+                            }
+                        
+                        # SHAP analysis (if requested and possible)
+                        if include_explainability:
+                            try:
+                                # Use a smaller sample for SHAP to avoid performance issues
+                                shap_sample_size = min(100, len(test_data))
+                                shap_data = test_data.head(shap_sample_size)
+                                
+                                explainability_results = st.session_state.explainability_analyzer.analyze_model(
+                                    model=st.session_state.model_loader.model,
+                                    X=shap_data.values,
+                                    feature_names=list(shap_data.columns)
+                                )
+                                results['explainability'] = explainability_results
+                            except Exception as e:
+                                st.warning(f"SHAP analysis failed: {str(e)}")
+                                results['explainability'] = {'error': str(e)}
+                        
+                        # Store results
+                        st.session_state.pipeline_test_results = results
+                        
+                        # Save results
+                        file_path = st.session_state.results_storage.save_test_results(results, test_name)
+                        
+                        st.success(f"✅ Pipeline testing completed successfully! Results saved to {file_path}")
+                        
+                        # Display results immediately
+                        display_pipeline_results(results)
+                        
+                    except Exception as e:
+                        st.error(f"❌ Pipeline testing failed: {str(e)}")
+                        logger.error(f"Pipeline test error: {str(e)}", exc_info=True)
+            
+            # Display previous results if available
+            if hasattr(st.session_state, 'pipeline_test_results') and st.session_state.pipeline_test_results:
+                st.markdown("---")
+                st.markdown("### 📊 Latest Pipeline Test Results")
+                display_pipeline_results(st.session_state.pipeline_test_results)
+                
+        except Exception as e:
+            st.error(f"❌ Error loading data: {str(e)}")
+
+
+def display_pipeline_results(results):
+    """Display pipeline testing results."""
+    
+    if not results:
+        st.warning("No results to display")
+        return
+    
+    # Basic metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Samples Processed", results.get('data_shape', [0])[0])
+    
+    with col2:
+        if 'performance' in results:
+            st.metric("Total Time (s)", f"{results['performance']['total_time']:.3f}")
+    
+    with col3:
+        if 'performance' in results:
+            st.metric("Avg Time/Sample (ms)", f"{results['performance']['avg_time_per_sample']*1000:.2f}")
+    
+    with col4:
+        if 'performance' in results:
+            st.metric("Throughput (samples/s)", f"{results['performance']['throughput']:.1f}")
+    
+    # Predictions
+    if 'predictions' in results:
+        st.markdown("### 🎯 Predictions")
+        predictions = results['predictions']
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Prediction Summary:**")
+            if predictions.dtype in ['int64', 'int32'] or len(np.unique(predictions)) <= 10:
+                # Classification case
+                pred_counts = pd.Series(predictions).value_counts()
+                st.bar_chart(pred_counts)
+            else:
+                # Regression case
+                st.line_chart(pd.Series(predictions[:100]))  # Show first 100 for visualization
+        
+        with col2:
+            st.markdown("**Statistics:**")
+            st.json({
+                "Count": len(predictions),
+                "Unique Values": len(np.unique(predictions)),
+                "Min": float(np.min(predictions)),
+                "Max": float(np.max(predictions)),
+                "Mean": float(np.mean(predictions)),
+                "Std": float(np.std(predictions))
+            })
+    
+    # Probabilities
+    if 'probabilities' in results:
+        st.markdown("### 📊 Prediction Probabilities")
+        probas = results['probabilities']
+        
+        # Show probability distribution for first few classes
+        prob_df = pd.DataFrame(probas[:100])  # First 100 samples
+        st.line_chart(prob_df)
+    
+    # Explainability
+    if 'explainability' in results and 'error' not in results['explainability']:
+        st.markdown("### 🔍 Feature Importance (SHAP)")
+        explainability = results['explainability']
+        
+        if 'summary' in explainability:
+            summary = explainability['summary']
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("Total Features", summary.get('total_features', 0))
+                st.metric("Max Importance", f"{summary.get('max_importance', 0):.4f}")
+            
+            with col2:
+                st.metric("Mean Importance", f"{summary.get('mean_importance', 0):.4f}")
+
 
 if __name__ == "__main__":
     main()

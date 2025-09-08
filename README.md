@@ -2,13 +2,18 @@
 
 ## Overview
 
-This project is a unified dashboard for **monitoring, evaluating, and explaining ML models in production-like settings**, built with **Streamlit**, **scikit-learn**, and **SHAP**. It addresses the pain points of manual schema entry, lack of model observability, and limited drift/explainability support. The dashboard supports both **interactive UI** and **API-driven automatic testing**, making it ideal for both educational and prototyping purposes, and for integration into CI/CD systems.
+This project is a unified dashboard for **monitoring, evaluating, and explaining ML models in production-like settings**, built with **Streamlit**, **scikit-learn**, and **SHAP**. It addresses the pain points of manual schema entry, lack of model observability, and limited drift/explainability support.
+
+The dashboard now features **pipeline-based inference**, allowing users to upload scikit-learn pipelines (`.pkl` files) along with raw CSV data. The pipeline handles all preprocessing automatically, ensuring consistency with the training process and providing a more robust, production-ready solution.
+
+The dashboard supports both **interactive UI** and **API-driven automatic testing**, making it ideal for both educational and prototyping purposes, and for integration into CI/CD systems.
 
 ---
 
 ## Features & Components
 
 ### 1. **Model Upload & Registration**
+
 - **UI:** Users can upload their trained `.pkl` model via the dashboard.
 - **API:** Users (or scripts) can POST their model to the dashboard endpoint for automated evaluation.
 - **Schema Handling:**
@@ -17,32 +22,38 @@ This project is a unified dashboard for **monitoring, evaluating, and explaining
   - **Optional:** The API allows sending a schema or sample input for more accurate testing.
 
 ### 2. **Synthetic Data Generation**
+
 - **Configurable:** Users can set parameters (number of samples, features, distribution) for synthetic data.
 - **Automated:** For API calls, the dashboard automatically generates synthetic data matching the inferred or provided schema.
 - **Robust:** Supports float/int/categorical features, and custom distributions.
 
 ### 3. **Automated Model Testing**
+
 - **Prediction:** The model is tested on synthetic data.
 - **Performance Metrics:** Throughput (preds/sec), latency (ms), error rate, and optional accuracy if simulated labels are available.
 - **Drift Simulation:** Optionally simulates data drift by generating data with shifted distributions and observing model output changes.
 - **Explainability:** Integrates SHAP to provide feature importance and local/global explanation visualizations.
 
 ### 4. **Dashboard Visualization**
+
 - **Metrics:** Real-time and historical graphs for latency, throughput, error rate, accuracy, drift metrics, resource usage.
 - **Explainability:** SHAP summary plots, force plots for sample predictions, feature importance charts.
 - **Drift Monitoring:** Visualizes changes in prediction distributions when data drift is simulated.
 - **Logs & Reports:** Users can view, download, and share metric summaries and visualizations.
 
 ### 5. **API Endpoint for Automated Testing**
+
 - **Usage:** CI/CD scripts or other applications can POST a `.pkl` model (and optional schema/sample) to the dashboard API.
 - **Function:** The dashboard runs the full suite of synthetic tests, updates the UI, and returns a summary response.
 - **Integration:** Enables hands-free, standardized model validation in automated workflows.
 
 ### 6. **Historical Tracking**
+
 - **Session Logs:** Stores results of all model tests for audit and comparison.
 - **Comparative Analysis:** Users can compare models, track drift over time, and analyze explainability metrics across versions.
 
 ### 7. **Extensibility**
+
 - Modular structure supports addition of new metrics, model types, drift tests, and explainability methods.
 
 ---
@@ -104,31 +115,38 @@ model-monitoring-dashboard/
 ## Detailed Feature Explanations
 
 ### **1. Model Upload & Introspection**
+
 - **User:** Uploads `.pkl` file.
 - **System:** Loads model, attempts to extract required input columns/types using `feature_names_in_`, pipeline steps, or fallback defaults.
 
 ### **2. Synthetic Data Generation**
+
 - **User:** Sets data generation parameters or lets system auto-generate.
 - **System:** Creates random (or structured) data matching expected schema, handling types and distributions.
 
 ### **3. Automated Testing & Metric Calculation**
+
 - **User:** Triggers tests via UI or API.
-- **System:** Measures prediction latency, throughput, error rate, and (if possible) accuracy. 
+- **System:** Measures prediction latency, throughput, error rate, and (if possible) accuracy.
 - **Drift Simulation:** System modifies data distribution (mean/variance shifts) and observes model output changes.
 
 ### **4. Explainability (SHAP Integration)**
+
 - **User:** Views SHAP plots showing feature impact on predictions.
 - **System:** Computes local/global SHAP values and presents visualizations.
 
 ### **5. Visualization & Reporting**
+
 - **User:** Interactively explores charts, metrics, comparisons, and downloads results.
 - **System:** Stores logs for historical analysis and audit trail.
 
 ### **6. API Endpoint**
+
 - **User:** Sends `.pkl` (and optional schema) via POST request.
 - **System:** Runs all above steps, updates dashboard, returns summary response.
 
 ### **7. Historical & Comparative Analysis**
+
 - **User:** Reviews previous model tests and compares performance/drift/explainability over time.
 - **System:** Maintains persistent logs and enables comparison.
 
@@ -145,6 +163,40 @@ model-monitoring-dashboard/
 
 ## Getting Started
 
+### **Pipeline-Based Workflow (Recommended)**
+
+1. **Create or prepare a scikit-learn pipeline:**
+
+   ```python
+   from sklearn.pipeline import Pipeline
+   from sklearn.preprocessing import StandardScaler
+   from sklearn.ensemble import RandomForestClassifier
+
+   pipeline = Pipeline([
+       ('scaler', StandardScaler()),
+       ('classifier', RandomForestClassifier())
+   ])
+   # Train your pipeline and save it
+   joblib.dump(pipeline, 'my_pipeline.pkl')
+   ```
+
+2. **Run the dashboard:**
+
+   ```bash
+   streamlit run app.py
+   ```
+
+3. **Upload your pipeline model:**  
+   Use the "Model Upload" page to upload your `.pkl` pipeline file
+
+4. **Test with raw data:**  
+   Use the "Raw Data Testing" page to upload your raw CSV data and get automatic preprocessing + predictions
+
+5. **Analyze results:**  
+   View performance metrics, prediction distributions, and SHAP explanations
+
+### **Traditional Workflow**
+
 1. **Clone the repo:**  
    `git clone https://github.com/DURGAKALYAN27/model-monitoring-demo`
 2. **Install dependencies:**  
@@ -153,6 +205,17 @@ model-monitoring-dashboard/
    `streamlit run app.py`
 4. **(For API use) Run example client script:**  
    `python example_client/client_api_example.py`
+
+### **Creating Example Pipelines**
+
+To get started quickly, you can create example pipelines:
+
+```bash
+cd example_client
+python create_pipeline_examples.py
+```
+
+This will create several example pipeline files and corresponding test data that you can use with the dashboard.
 
 ---
 
