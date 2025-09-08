@@ -1,6 +1,5 @@
 """
 Synthetic data generation utilities.
-Generates test data based on schema definitions and user parameters.
 """
 
 import numpy as np
@@ -16,11 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class DataGenerator:
-    """Generates synthetic data based on schema and parameters."""
+    """Generates synthetic data based on schema."""
     
     def __init__(self, schema_manager: SchemaManager):
         self.schema_manager = schema_manager
-        self.generation_params = {}
     
     def set_generation_params(self, params: Dict[str, Any]):
         """Set parameters for data generation."""
