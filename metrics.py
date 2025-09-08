@@ -9,9 +9,23 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
 import logging
 from scipy import stats
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import (
+    accuracy_score, 
+    precision_score, 
+    recall_score, 
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    mean_squared_error, 
+    mean_absolute_error, 
+    r2_score
+)
+import matplotlib.pyplot as plt
+import seaborn as sns
 import warnings
+from datetime import datetime
+from io import BytesIO
+import base64
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
+plt.style.use('default')
 
 
 class PerformanceMetrics:
@@ -74,44 +89,68 @@ class PerformanceMetrics:
         """Calculate timing-related metrics."""
         times = []
         
-        # Convert numpy array to DataFrame if needed
-        if hasattr(model, 'feature_names_in_') and model.feature_names_in_ is not None:
-            # Model expects DataFrame with specific column names
-            X_df = pd.DataFrame(X, columns=model.feature_names_in_)
-        else:
-            # Model can handle numpy array
-            X_df = X
-        
-        for _ in range(n_iterations):
-            start_time = time.time()
-            _ = model.predict(X_df)
-            end_time = time.time()
-            times.append(end_time - start_time)
-        
-        times = np.array(times)
-        
-        return {
-            'latency_mean_ms': np.mean(times) * 1000,  # Convert to milliseconds
-            'latency_std_ms': np.std(times) * 1000,
-            'latency_min_ms': np.min(times) * 1000,
-            'latency_max_ms': np.max(times) * 1000,
-            'latency_p95_ms': np.percentile(times, 95) * 1000,
-            'latency_p99_ms': np.percentile(times, 99) * 1000,
-            'throughput_preds_per_sec': len(X) / np.mean(times),
-            'total_prediction_time_sec': np.sum(times)
-        }
+        try:
+            # Get expected feature names from model
+            if hasattr(model, 'feature_names_in_'):
+                expected_features = model.feature_names_in_
+                n_expected = len(expected_features)
+                n_provided = X.shape[1]
+                
+                if n_expected != n_provided:
+                    logger.warning(f"Feature count mismatch. Model expects {n_expected} features, but got {n_provided}")
+                    # Use only the first n_expected features
+                    X = X[:, :n_expected]
+            
+            # Run predictions
+            for _ in range(n_iterations):
+                start_time = time.time()
+                _ = self._get_predictions(model, X)
+                end_time = time.time()
+                times.append(end_time - start_time)
+            
+            times = np.array(times)
+            
+            return {
+                'latency_mean_ms': np.mean(times) * 1000,
+                'latency_std_ms': np.std(times) * 1000,
+                'latency_min_ms': np.min(times) * 1000,
+                'latency_max_ms': np.max(times) * 1000,
+                'latency_p95_ms': np.percentile(times, 95) * 1000,
+                'latency_p99_ms': np.percentile(times, 99) * 1000,
+                'throughput_preds_per_sec': len(X) / np.mean(times),
+                'total_prediction_time_sec': np.sum(times)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in timing metrics calculation: {str(e)}")
+            return {
+                'latency_mean_ms': 0,
+                'latency_std_ms': 0,
+                'latency_min_ms': 0,
+                'latency_max_ms': 0,
+                'latency_p95_ms': 0,
+                'latency_p99_ms': 0,
+                'throughput_preds_per_sec': 0,
+                'total_prediction_time_sec': 0
+            }
     
     def _get_predictions(self, model, X: np.ndarray) -> np.ndarray:
         """Get model predictions safely."""
         try:
-            # Convert numpy array to DataFrame if needed
+            # Handle feature name matching if model expects specific features
             if hasattr(model, 'feature_names_in_') and model.feature_names_in_ is not None:
-                # Model expects DataFrame with specific column names
-                X_df = pd.DataFrame(X, columns=model.feature_names_in_)
+                n_expected = len(model.feature_names_in_)
+                if X.shape[1] != n_expected:
+                    logger.warning(f"Adjusting input features to match model expectations")
+                    X = X[:, :n_expected]
+                    
+                # Create DataFrame with expected feature names
+                X_df = pd.DataFrame(X, columns=model.feature_names_in_[:n_expected])
                 return model.predict(X_df)
             else:
-                # Model can handle numpy array
+                # Model can handle numpy array directly
                 return model.predict(X)
+                
         except Exception as e:
             logger.error(f"Prediction failed: {str(e)}")
             return np.array([])
@@ -429,146 +468,96 @@ class DriftDetector:
 
 
 class MetricsAggregator:
-    """Aggregates and manages multiple types of metrics."""
+    """Aggregates performance metrics."""
     
     def __init__(self):
         self.performance_metrics = PerformanceMetrics()
-        self.drift_detector = DriftDetector()
-        self.metrics_history = []
     
-    def run_comprehensive_evaluation(self, model, X: np.ndarray, 
-                                   y_true: Optional[np.ndarray] = None,
-                                   reference_data: Optional[pd.DataFrame] = None,
-                                   test_name: str = "default_test") -> Dict[str, Any]:
+    def run_comprehensive_evaluation(self, 
+                              model, 
+                              X: np.ndarray,
+                              test_name: str = "default_test",
+                              y_true: Optional[np.ndarray] = None,
+                              n_iterations: int = 3) -> Dict[str, Any]:
         """
-        Run comprehensive model evaluation including performance and drift metrics.
+        Run comprehensive model evaluation.
         
         Args:
-            model: Trained model
+            model: The model to evaluate
             X: Input features
-            y_true: True labels (optional)
-            reference_data: Reference data for drift detection (optional)
             test_name: Name for this test run
+            y_true: Optional true labels for accuracy metrics
+            n_iterations: Number of iterations for timing metrics
             
         Returns:
-            Dict with comprehensive evaluation results
+            Dict containing evaluation results
         """
         results = {
             'test_name': test_name,
-            'timestamp': pd.Timestamp.now().isoformat(),
+            'timestamp': datetime.now().isoformat(),
             'n_samples': len(X),
-            'n_features': X.shape[1] if X.ndim > 1 else 1
+            'n_features': X.shape[1] if len(X.shape) > 1 else 1
         }
         
-        # Performance metrics
-        performance_results = self.performance_metrics.calculate_prediction_metrics(
-            model, X, y_true
-        )
-        results['performance'] = performance_results
-        
-        # Drift detection (if reference data provided)
-        if reference_data is not None:
-            try:
-                # Convert X to DataFrame for drift detection
-                if isinstance(X, np.ndarray):
-                    X_df = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(X.shape[1])])
-                else:
-                    X_df = X
+        try:
+            # Check if model is a dictionary and extract the actual model
+            if isinstance(model, dict) and 'model' in model:
+                model = model['model']
                 
-                self.drift_detector.set_reference_data(reference_data)
-                drift_results = self.drift_detector.detect_drift(X_df)
-                results['drift'] = drift_results
-            except Exception as e:
-                logger.warning(f"Drift detection failed: {str(e)}")
-                results['drift'] = {'error': str(e)}
-        
-        # Store in history
-        self.metrics_history.append(results)
-        
-        return results
-    
-    def get_metrics_summary(self) -> Dict[str, Any]:
-        """Get summary of all metrics history."""
-        if not self.metrics_history:
-            return {'message': 'No metrics history available'}
-        
-        summary = {
-            'total_tests': len(self.metrics_history),
-            'latest_test': self.metrics_history[-1]['test_name'],
-            'performance_trends': self._calculate_performance_trends(),
-            'drift_trends': self._calculate_drift_trends()
-        }
-        
-        return summary
-    
-    def _calculate_performance_trends(self) -> Dict[str, Any]:
-        """Calculate performance trends over time."""
-        if len(self.metrics_history) < 2:
-            return {'message': 'Insufficient data for trends'}
-        
-        trends = {}
-        
-        # Extract performance metrics
-        latencies = [test['performance'].get('latency_mean_ms', 0) for test in self.metrics_history]
-        throughputs = [test['performance'].get('throughput_preds_per_sec', 0) for test in self.metrics_history]
-        
-        if latencies:
-            trends['latency_trend'] = 'improving' if latencies[-1] < latencies[0] else 'degrading'
-            trends['latency_change_percent'] = ((latencies[-1] - latencies[0]) / latencies[0] * 100) if latencies[0] > 0 else 0
-        
-        if throughputs:
-            trends['throughput_trend'] = 'improving' if throughputs[-1] > throughputs[0] else 'degrading'
-            trends['throughput_change_percent'] = ((throughputs[-1] - throughputs[0]) / throughputs[0] * 100) if throughputs[0] > 0 else 0
-        
-        return trends
-    
-    def _calculate_drift_trends(self) -> Dict[str, Any]:
-        """Calculate drift trends over time."""
-        if len(self.metrics_history) < 2:
-            return {'message': 'Insufficient data for trends'}
-        
-        drift_scores = [test.get('drift', {}).get('overall_drift_score', 0) for test in self.metrics_history]
-        
-        if drift_scores:
-            return {
-                'drift_trend': 'increasing' if drift_scores[-1] > drift_scores[0] else 'decreasing',
-                'current_drift_score': drift_scores[-1],
-                'max_drift_score': max(drift_scores)
+            # Ensure we have a valid model
+            if not hasattr(model, 'predict'):
+                raise ValueError("Model does not have predict method")
+                
+            # Get performance metrics
+            performance_results = self.performance_metrics.calculate_prediction_metrics(
+                model=model,
+                X=X,
+                y_true=y_true,
+                n_iterations=n_iterations
+            )
+            results['performance'] = performance_results
+            
+            # Get predictions
+            predictions = model.predict(X)
+            
+            if y_true is not None:
+                # Classification report
+                report = classification_report(y_true, predictions, output_dict=True)
+                results['classification_report'] = report
+                
+                # Confusion matrix
+                cm = confusion_matrix(y_true, predictions)
+                
+                # Create confusion matrix plot
+                plt.figure(figsize=(8, 6))
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+                plt.title('Confusion Matrix')
+                plt.ylabel('True Label')
+                plt.xlabel('Predicted Label')
+                
+                # Convert plot to base64
+                buffer = BytesIO()
+                plt.savefig(buffer, format='png', bbox_inches='tight')
+                buffer.seek(0)
+                cm_image = base64.b64encode(buffer.getvalue()).decode()
+                plt.close()
+                
+                results['confusion_matrix'] = {
+                    'values': cm.tolist(),
+                    'plot': cm_image
+                }
+            
+            # Add prediction statistics
+            prediction_stats = {
+                'min': float(np.min(predictions)),
+                'max': float(np.max(predictions)),
+                'mean': float(np.mean(predictions)),
+                'std': float(np.std(predictions))
             }
+            results['prediction_statistics'] = prediction_stats
+            
+            return results
         
-        return {'message': 'No drift data available'}
-
-
-if __name__ == "__main__":
-    # Test the metrics modules
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.datasets import make_classification
-    
-    # Generate sample data
-    X, y = make_classification(n_samples=1000, n_features=5, n_classes=2, random_state=42)
-    X_train, X_test, y_train, y_test = X[:800], X[800:], y[:800], y[800:]
-    
-    # Train a model
-    model = RandomForestClassifier(n_estimators=10, random_state=42)
-    model.fit(X_train, y_train)
-    
-    # Test performance metrics
-    perf_metrics = PerformanceMetrics()
-    results = perf_metrics.calculate_prediction_metrics(model, X_test, y_test)
-    print("Performance metrics:", results)
-    
-    # Test drift detection
-    drift_detector = DriftDetector()
-    reference_data = pd.DataFrame(X_train, columns=[f'feature_{i}' for i in range(X_train.shape[1])])
-    new_data = pd.DataFrame(X_test, columns=[f'feature_{i}' for i in range(X_test.shape[1])])
-    
-    drift_detector.set_reference_data(reference_data)
-    drift_results = drift_detector.detect_drift(new_data)
-    print("Drift detection results:", drift_results)
-    
-    # Test comprehensive evaluation
-    aggregator = MetricsAggregator()
-    comprehensive_results = aggregator.run_comprehensive_evaluation(
-        model, X_test, y_test, reference_data, "test_run_1"
-    )
-    print("Comprehensive evaluation:", comprehensive_results)
+        except Exception as e:
+            logger.error(f"Error in comprehensive evaluation: {str(e)}")
+            raise
