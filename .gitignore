@@ -22,26 +22,22 @@ env/
 *.swp
 *.swo
 
-# Project specific
+# Project specific - keep example files
 results/
 temp/
 logs/
 cache/
 .streamlit/
-*.pkl
-*.joblib
-*.h5
-model_artifacts/
 
-# Data files
+# Data files - keep example data
 data/
 *.csv
 *.xlsx
 *.parquet
 *.feather
-!sample_data/*.csv  # Allow sample data
+!example_client/*.csv  # Allow example data
 
-# Model files
+# Model files - keep example models  
 models/
 *.model
 *.bin
@@ -49,6 +45,11 @@ models/
 *.pt
 *.pth
 *.pb
+!example_client/*.pkl  # Allow example models
+
+# Backup files
+*_backup.py
+*_simple.py
 
 # Monitoring artifacts
 monitoring/
@@ -86,5 +87,3 @@ Thumbs.db
 node_modules/
 package-lock.json
 yarn.lock
-*.pyc
-*.json
