@@ -1,6 +1,5 @@
 """
-Schema utilities for defining, parsing, and validating input schemas.
-Handles both manual schema definition and automatic detection from CSV files.
+Schema utilities for defining and validating input schemas.
 """
 
 import pandas as pd
@@ -54,7 +53,7 @@ class SchemaDefinition:
 
 
 class SchemaManager:
-    """Manages feature schemas for model input validation and data generation."""
+    """Manages feature schemas for model input validation."""
     
     def __init__(self):
         self.schema: List[SchemaDefinition] = []
