@@ -1,0 +1,88 @@
+# ML Model Monitoring Dashboard - .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution/packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.env
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+results/
+temp/
+logs/
+cache/
+.streamlit/
+*.pkl
+*.joblib
+*.h5
+model_artifacts/
+
+# Data files
+data/
+*.csv
+*.xlsx
+*.parquet
+*.feather
+!sample_data/*.csv  # Allow sample data
+
+# Model files
+models/
+*.model
+*.bin
+*.onnx
+*.pt
+*.pth
+*.pb
+
+# Monitoring artifacts
+monitoring/
+metrics/
+visualizations/
+reports/
+*.png
+*.jpg
+*.pdf
+*.html
+
+# Temporary files
+*.tmp
+*_temp*
+.ipynb_checkpoints/
+*.log
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+test-results/
+coverage.xml
+
+# Configuration
+config.local.yml
+.env.local
+secrets.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
