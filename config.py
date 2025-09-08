@@ -1,9 +1,26 @@
 """
-Configuration settings for the ML Model Monitoring Dashboard.
+Configuration settings for the Model Monitoring Dashboard.
 """
-
+from pathlib import Path
+import logging
 import os
-from datetime import timedelta
+
+# Base directory
+BASE_DIR = Path(__file__).parent
+
+# Storage directories
+STORAGE_DIR = BASE_DIR / "results"
+MODEL_DIR = BASE_DIR / "models"
+TEMP_DIR = BASE_DIR / "temp"
+
+# Create directories if they don't exist
+STORAGE_DIR.mkdir(exist_ok=True)
+MODEL_DIR.mkdir(exist_ok=True)
+TEMP_DIR.mkdir(exist_ok=True)
+
+# Logging configuration
+LOG_LEVEL = logging.INFO
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 # Session Management Settings
 SESSION_CLEANUP_DAYS = int(os.getenv('SESSION_CLEANUP_DAYS', '30'))  # Clean up sessions older than 30 days
@@ -37,6 +54,14 @@ SHOW_DEBUG_INFO = os.getenv('SHOW_DEBUG_INFO', 'false').lower() == 'true'
 # Export Settings
 DEFAULT_EXPORT_FORMAT = os.getenv('DEFAULT_EXPORT_FORMAT', 'json')  # json, csv, excel
 MAX_EXPORT_SIZE_MB = int(os.getenv('MAX_EXPORT_SIZE_MB', '50'))
+
+# Default test settings
+DEFAULT_TEST_ITERATIONS = 3
+MAX_SAMPLES_VISUALIZATION = 1000
+
+# File extensions
+ALLOWED_MODEL_EXTENSIONS = ['.pkl', '.joblib', '.h5']
+ALLOWED_DATA_EXTENSIONS = ['.csv', '.parquet', '.feather']))
 
 def get_cleanup_config():
     """Get cleanup configuration."""
