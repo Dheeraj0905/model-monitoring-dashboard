@@ -369,6 +369,7 @@ def show_dataset_upload_page():
                 
                 # Show feature columns that will be used for prediction
                 feature_columns = [col for col in dataset.columns if col != target_column]
+                st.session_state.feature_columns = feature_columns  # Store feature columns in session state
                 st.info(f"Features for prediction: {', '.join(feature_columns)}")
                 
                 # Target distribution
@@ -821,27 +822,23 @@ def show_shap_page():
         st.error("❌ Please upload a model first")
         return
     
-    # Check available data sources
-    available_data = []
-    if st.session_state.dataset is not None:
-        available_data.append("Original Dataset")
-    if st.session_state.synthetic_data is not None:
-        available_data.append("Synthetic Data")
-    
-    if not available_data:
-        st.error("❌ No data available for explanation. Please upload a dataset or generate synthetic data.")
+    # Check if synthetic data is available
+    if st.session_state.synthetic_data is None:
+        st.error("❌ No synthetic data available. Please generate synthetic data first.")
         return
+        
+    # Use synthetic data for explanation
+    explain_data = st.session_state.synthetic_data.copy()
     
-    # Data source selection
-    data_source = st.selectbox("Select data for explanation:", available_data)
+    st.info("ℹ️ Using synthetic data for SHAP explanation analysis")
     
-    # Get the selected data
-    if data_source == "Original Dataset":
-        explain_data = st.session_state.dataset.copy()
-        if st.session_state.target_column:
-            explain_data = explain_data.drop(columns=[st.session_state.target_column])
-    else:
-        explain_data = st.session_state.synthetic_data.copy()
+    # Validate data types and handle any missing values
+    for col in explain_data.columns:
+        if explain_data[col].dtype == 'object':
+            # Convert categorical columns to numeric using label encoding
+            explain_data[col] = pd.Categorical(explain_data[col]).codes
+        # Fill any missing values with 0 (or you could use mean/median)
+        explain_data[col] = explain_data[col].fillna(0)
     
     # Sample size for explanation
     max_samples = min(100, len(explain_data))
@@ -852,29 +849,70 @@ def show_shap_page():
             try:
                 # Simple feature importance (correlation-based for simplicity)
                 sample_data = explain_data.head(num_samples)
-                predictions = st.session_state.model.predict(sample_data.values)
                 
-                # Calculate feature importance using correlation with predictions
-                feature_importance = {}
-                for col in sample_data.columns:
-                    if pd.api.types.is_numeric_dtype(sample_data[col]):
-                        correlation = np.corrcoef(sample_data[col].values, predictions)[0, 1]
-                        feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
+                try:
+                    # Make predictions
+                    predictions = st.session_state.model.predict(sample_data.values)
+                    
+                    # Calculate feature importance using correlation with predictions
+                    feature_importance = {}
+                    
+                    # Handle different prediction shapes (single output or multi-output)
+                    if predictions.ndim > 1:
+                        # For multi-output models, use mean prediction across outputs
+                        predictions_for_corr = np.mean(predictions, axis=1)
                     else:
-                        # For categorical features, use a simple encoding correlation
-                        encoded_values = pd.factorize(sample_data[col])[0]
-                        correlation = np.corrcoef(encoded_values, predictions)[0, 1]
-                        feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
+                        predictions_for_corr = predictions
+                    
+                    # Calculate correlations for each feature
+                    for col in sample_data.columns:
+                        try:
+                            correlation = np.corrcoef(sample_data[col].values, predictions_for_corr)[0, 1]
+                            feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
+                        except Exception as col_error:
+                            st.warning(f"Could not calculate importance for feature '{col}': {str(col_error)}")
+                            feature_importance[col] = 0
+                            
+                except Exception as pred_error:
+                    st.error(f"Error making predictions: {str(pred_error)}")
+                    return
                 
                 # Display feature importance
                 st.markdown("### 📊 Feature Importance")
                 
+                # Create dataframe and normalize importance scores
                 importance_df = pd.DataFrame(list(feature_importance.items()), 
-                                           columns=['Feature', 'Importance'])
-                importance_df = importance_df.sort_values('Importance', ascending=True)
+                                          columns=['Feature', 'Importance'])
+                # Add small epsilon to avoid division by zero
+                importance_df['Importance'] = np.abs(importance_df['Importance'])
+                max_importance = importance_df['Importance'].max()
+                if max_importance > 0:
+                    importance_df['Importance'] = importance_df['Importance'] / max_importance
                 
-                fig = px.bar(importance_df, x='Importance', y='Feature', 
-                           orientation='h', title="Feature Importance (Correlation-based)")
+                # Sort by importance descending for better visualization
+                importance_df = importance_df.sort_values('Importance', ascending=False)
+                
+                # Create feature importance bar plot
+                fig = px.bar(importance_df,
+                            x='Importance',
+                            y='Feature',
+                            orientation='h',
+                            title="Feature Importance (Correlation-based)",
+                            labels={'Importance': 'Normalized Importance Score',
+                                   'Feature': 'Feature Name'},
+                            color='Importance',
+                            color_continuous_scale='viridis')
+                
+                # Update layout for better readability
+                fig.update_layout(
+                    showlegend=False,
+                    xaxis_title="Normalized Importance Score",
+                    yaxis_title="Feature Name",
+                    yaxis={'categoryorder': 'total descending'},  # Changed to descending to show most important at top
+                    height=max(400, len(importance_df) * 30),  # Dynamic height based on number of features
+                    yaxis_autorange='reversed'  # This ensures most important features appear at the top
+                )
+                
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Sample predictions table
@@ -894,12 +932,38 @@ def show_shap_page():
                 
                 # Top important features
                 st.markdown("### 🏆 Top 5 Most Important Features")
-                top_features = importance_df.tail(5)
-                for idx, row in top_features.iterrows():
-                    st.info(f"**{row['Feature']}**: Importance score {row['Importance']:.3f}")
                 
-                st.success("✅ SHAP explanations generated!")
-                st.info("ℹ️ Note: This is a simplified explanation using correlation analysis. For full SHAP analysis, install the SHAP library.")
+                # Get top 5 features and create a dedicated visualization for them
+                top_features = importance_df.head(5)  # Using head() since we sorted descending
+                
+                # Create a horizontal bar chart for top 5 features
+                fig_top = px.bar(top_features,
+                                x='Importance',
+                                y='Feature',
+                                orientation='h',
+                                title="Top 5 Most Important Features",
+                                labels={'Importance': 'Normalized Importance Score',
+                                       'Feature': 'Feature Name'},
+                                color='Importance',
+                                color_continuous_scale='viridis')
+                
+                fig_top.update_layout(
+                    showlegend=False,
+                    xaxis_title="Normalized Importance Score",
+                    yaxis_title="Feature Name",
+                    height=400,
+                    yaxis={'categoryorder': 'total descending'},  # Show most important at top
+                    yaxis_autorange='reversed'  # This ensures most important features appear at the top
+                )
+                
+                st.plotly_chart(fig_top, use_container_width=True)
+                
+                # Display detailed info for top features
+                for idx, row in top_features.iterrows():
+                    st.info(f"**{row['Feature']}**: Normalized importance score {row['Importance']:.3f}")
+                
+                st.success("✅ Feature importance analysis generated!")
+                st.info("ℹ️ Note: This is a simplified explanation using correlation analysis. For more advanced analysis, consider installing the SHAP library for deeper model interpretability.")
                 
             except Exception as e:
                 st.error(f"❌ Error generating explanations: {str(e)}")

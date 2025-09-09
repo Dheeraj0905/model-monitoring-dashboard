@@ -9,10 +9,33 @@ from typing import Dict, List, Any, Optional, Union
 import logging
 from datetime import datetime
 from pathlib import Path
+import os
+import glob
+import atexit
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def cleanup_temp_files():
+    """Clean up temporary files when the application exits."""
+    try:
+        # Get all temp files
+        temp_files = glob.glob("temp_*")
+        
+        # Remove each temp file
+        for temp_file in temp_files:
+            try:
+                os.remove(temp_file)
+                logger.info(f"Cleaned up temporary file: {temp_file}")
+            except Exception as e:
+                logger.warning(f"Failed to remove temp file {temp_file}: {str(e)}")
+                
+    except Exception as e:
+        logger.error(f"Error during temp file cleanup: {str(e)}")
+
+# Register the cleanup function to run on exit
+atexit.register(cleanup_temp_files)
 
 class ResultsStorage:
     """Handles storage of test results and visualizations."""
@@ -20,6 +43,8 @@ class ResultsStorage:
     def __init__(self, storage_dir: str = "results"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(exist_ok=True)
+        # Clean any existing temp files on initialization
+        cleanup_temp_files()
     
     def save_test_results(self, test_results: Dict[str, Any], 
                          test_name: Optional[str] = None) -> str:

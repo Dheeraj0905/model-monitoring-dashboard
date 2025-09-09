@@ -61,7 +61,7 @@ MAX_SAMPLES_VISUALIZATION = 1000
 
 # File extensions
 ALLOWED_MODEL_EXTENSIONS = ['.pkl', '.joblib', '.h5']
-ALLOWED_DATA_EXTENSIONS = ['.csv', '.parquet', '.feather']))
+ALLOWED_DATA_EXTENSIONS = ['.csv', '.parquet', '.feather']
 
 def get_cleanup_config():
     """Get cleanup configuration."""
