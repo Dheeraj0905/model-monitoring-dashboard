@@ -25,7 +25,6 @@ import time
 # Page config
 st.set_page_config(
     page_title="ML Model Monitoring Dashboard",
-    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -73,7 +72,7 @@ if 'synthetic_data' not in st.session_state:
 if 'performance_results' not in st.session_state:
     st.session_state.performance_results = None
 if 'current_page' not in st.session_state:
-    st.session_state.current_page = "🏠 Home"
+    st.session_state.current_page = "Home"
 
 def load_model(file_path):
     """Load model from file."""
@@ -131,19 +130,19 @@ def main():
     """Main application function."""
     
     # Header
-    st.markdown('<h1 class="main-header">🤖 ML Model Monitoring Dashboard</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">ML Model Monitoring Dashboard</h1>', unsafe_allow_html=True)
     
     # Sidebar navigation
     st.sidebar.title("Navigation")
     
     nav_options = [
-        "🏠 Home",
-        "📁 Model Upload", 
-        "📊 Dataset Upload",
-        "📈 Results & Analytics",
-        "🎲 Data Generation",
-        "⚡ Performance Testing",
-        "🔍 SHAP Explainability"
+        "Home",
+        "Model Upload", 
+        "Dataset Upload",
+        "Results & Analytics",
+        "Data Generation",
+        "Performance Testing",
+        "Model Explainability"
     ]
     
     selected_page = st.sidebar.radio(
@@ -156,19 +155,19 @@ def main():
     st.session_state.current_page = selected_page
     
     # Route to pages
-    if st.session_state.current_page == "🏠 Home":
+    if st.session_state.current_page == "Home":
         show_home_page()
-    elif st.session_state.current_page == "📁 Model Upload":
+    elif st.session_state.current_page == "Model Upload":
         show_model_upload_page()
-    elif st.session_state.current_page == "📊 Dataset Upload":
+    elif st.session_state.current_page == "Dataset Upload":
         show_dataset_upload_page()
-    elif st.session_state.current_page == "📈 Results & Analytics":
+    elif st.session_state.current_page == "Results & Analytics":
         show_results_page()
-    elif st.session_state.current_page == "🎲 Data Generation":
+    elif st.session_state.current_page == "Data Generation":
         show_data_generation_page()
-    elif st.session_state.current_page == "⚡ Performance Testing":
+    elif st.session_state.current_page == "Performance Testing":
         show_performance_testing_page()
-    elif st.session_state.current_page == "🔍 SHAP Explainability":
+    elif st.session_state.current_page == "Model Explainability":
         show_shap_page()
 
 def show_home_page():
@@ -180,20 +179,20 @@ def show_home_page():
     
     with col1:
         st.markdown("""
-        ### 🎯 What is this dashboard?
+        ### About This Dashboard
         
         A comprehensive tool to upload your machine learning models and test their performance with advanced analytics.
         
-        ### 🚀 Workflow:
+        ### Workflow:
         
-        1. **📁 Model Upload**: Upload your trained model (.pkl file)
-        2. **📊 Dataset Upload**: Upload your test dataset (CSV file) 
-        3. **📈 Results & Analytics**: View performance metrics and visualizations
-        4. **🎲 Data Generation**: Generate synthetic test data
-        5. **⚡ Performance Testing**: Test model latency and throughput
-        6. **🔍 SHAP Explainability**: Understand model predictions
+        1. **Model Upload**: Upload your trained model (.pkl file)
+        2. **Dataset Upload**: Upload your test dataset (CSV file) 
+        3. **Results & Analytics**: View performance metrics and visualizations
+        4. **Data Generation**: Generate synthetic test data
+        5. **Performance Testing**: Test model latency and throughput
+        6. **Model Explainability**: Understand model predictions
         
-        ### 🔧 Supported Models
+        ### Supported Models
         
         - Classification models (Random Forest, SVM, etc.)
         - Regression models (Linear Regression, etc.)
@@ -201,57 +200,57 @@ def show_home_page():
         """)
     
     with col2:
-        st.markdown("### 📊 Current Status")
+        st.markdown("### Current Status")
         
         # Model status
         if st.session_state.model is not None:
-            st.success("✅ Model Loaded")
+            st.success("Model Loaded")
             if st.session_state.model_type:
-                st.info(f"🔧 Type: {st.session_state.model_type.title()}")
+                st.info(f"Type: {st.session_state.model_type.title()}")
         else:
-            st.warning("⚠️ No Model Loaded")
+            st.warning("No Model Loaded")
         
         # Dataset status
         if st.session_state.dataset is not None:
-            st.success("✅ Dataset Loaded")
-            st.info(f"📊 Rows: {len(st.session_state.dataset)}")
+            st.success("Dataset Loaded")
+            st.info(f"Rows: {len(st.session_state.dataset)}")
             if st.session_state.target_column:
-                st.info(f"🎯 Target: {st.session_state.target_column}")
+                st.info(f"Target: {st.session_state.target_column}")
         else:
-            st.warning("⚠️ No Dataset Loaded")
+            st.warning("No Dataset Loaded")
         
         # Synthetic data status
         if st.session_state.synthetic_data is not None:
-            st.success("✅ Synthetic Data Generated")
-            st.info(f"🎲 Samples: {len(st.session_state.synthetic_data)}")
+            st.success("Synthetic Data Generated")
+            st.info(f"Samples: {len(st.session_state.synthetic_data)}")
         else:
-            st.warning("⚠️ No Synthetic Data")
+            st.warning("No Synthetic Data")
         
         # Next steps
-        st.markdown("### 🔄 Next Steps")
+        st.markdown("### Next Steps")
         if st.session_state.model is None:
-            if st.button("📁 Upload Model", key="home_model_btn"):
-                st.session_state.current_page = "📁 Model Upload"
+            if st.button("Upload Model", key="home_model_btn"):
+                st.session_state.current_page = "Model Upload"
                 st.rerun()
         elif st.session_state.dataset is None:
-            if st.button("📊 Upload Dataset", key="home_dataset_btn"):
-                st.session_state.current_page = "📊 Dataset Upload"
+            if st.button("Upload Dataset", key="home_dataset_btn"):
+                st.session_state.current_page = "Dataset Upload"
                 st.rerun()
         else:
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("📈 View Results", key="home_results_btn"):
-                    st.session_state.current_page = "📈 Results & Analytics"
+                if st.button("View Results", key="home_results_btn"):
+                    st.session_state.current_page = "Results & Analytics"
                     st.rerun()
             with col2:
-                if st.button("🔍 SHAP Analysis", key="home_shap_btn"):
-                    st.session_state.current_page = "🔍 SHAP Explainability"
+                if st.button("SHAP Analysis", key="home_shap_btn"):
+                    st.session_state.current_page = "Model Explainability"
                     st.rerun()
 
 def show_model_upload_page():
     """Display the model upload page."""
     
-    st.markdown("## 📁 Model Upload")
+    st.markdown("## Model Upload")
     st.markdown("Upload your trained machine learning model (.pkl file) to get started.")
     
     # File uploader
@@ -272,10 +271,10 @@ def show_model_upload_page():
         
         if model is not None:
             st.session_state.model = model
-            st.success("✅ Model loaded successfully!")
+            st.success("Model loaded successfully!")
             
             # Model type selection
-            st.markdown("### 🔧 Model Type")
+            st.markdown("### Model Type")
             st.markdown("Please specify what type of model this is:")
             
             model_type = st.radio(
@@ -289,13 +288,13 @@ def show_model_upload_page():
                 st.info(f"Model type set to: {model_type.title()}")
                 
                 # Show model information
-                st.markdown("### 📊 Model Information")
+                st.markdown("### Model Information")
                 st.info(f"Model Class: {type(model).__name__}")
                 
                 # Next steps
-                st.markdown("### 🔄 Next Steps")
-                if st.button("📊 Upload Dataset", key="goto_dataset_btn"):
-                    st.session_state.current_page = "📊 Dataset Upload"
+                st.markdown("### Next Steps")
+                if st.button("Upload Dataset", key="goto_dataset_btn"):
+                    st.session_state.current_page = "Dataset Upload"
                     st.rerun()
         
         # Clean up temp file
@@ -306,20 +305,20 @@ def show_model_upload_page():
     
     # Current model status
     if st.session_state.model is not None:
-        st.markdown("### 📊 Current Model Status")
-        st.success("✅ Model loaded and ready")
+        st.markdown("### Current Model Status")
+        st.success("Model loaded and ready")
         if st.session_state.model_type:
-            st.info(f"🔧 Type: {st.session_state.model_type.title()}")
+            st.info(f"Type: {st.session_state.model_type.title()}")
 
 def show_dataset_upload_page():
     """Display the dataset upload page."""
     
-    st.markdown("## 📊 Dataset Upload")
+    st.markdown("## Dataset Upload")
     st.markdown("Upload your test dataset with true labels to evaluate model performance.")
     
     # Check if model is loaded
     if st.session_state.model is None:
-        st.error("❌ Please upload a model first")
+        st.error("Please upload a model first")
         return
     
     # File uploader
@@ -335,14 +334,14 @@ def show_dataset_upload_page():
             dataset = pd.read_csv(uploaded_file)
             st.session_state.dataset = dataset
             
-            st.success(f"✅ Dataset loaded successfully! Shape: {dataset.shape}")
+            st.success(f"Dataset loaded successfully! Shape: {dataset.shape}")
             
             # Dataset preview
-            st.markdown("### 📋 Dataset Preview")
+            st.markdown("### Dataset Preview")
             st.dataframe(dataset.head())
             
             # Dataset info
-            st.markdown("### 📊 Dataset Info")
+            st.markdown("### Dataset Info")
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Rows", len(dataset))
@@ -352,11 +351,11 @@ def show_dataset_upload_page():
                 st.metric("Duplicates", dataset.duplicated().sum())
             
             # Feature information
-            st.markdown("### 🔧 Feature Information")
+            st.markdown("### Feature Information")
             st.info(f"Available columns: {', '.join(dataset.columns.tolist())}")
             
             # Target column selection
-            st.markdown("### 🎯 Target Column Selection")
+            st.markdown("### Target Column Selection")
             target_column = st.selectbox(
                 "Select the target column (true labels):",
                 options=dataset.columns.tolist(),
@@ -373,7 +372,7 @@ def show_dataset_upload_page():
                 st.info(f"Features for prediction: {', '.join(feature_columns)}")
                 
                 # Target distribution
-                st.markdown("### 📈 Target Distribution")
+                st.markdown("### Target Distribution")
                 if st.session_state.model_type == "classification":
                     value_counts = dataset[target_column].value_counts()
                     fig = px.bar(x=value_counts.index, y=value_counts.values, 
@@ -384,37 +383,37 @@ def show_dataset_upload_page():
                     st.plotly_chart(fig, use_container_width=True)
                 
                 # Next steps
-                st.markdown("### 🔄 Next Steps")
-                if st.button("📈 View Results", key="goto_results_btn"):
-                    st.session_state.current_page = "📈 Results & Analytics"
+                st.markdown("### Next Steps")
+                if st.button("View Results", key="goto_results_btn"):
+                    st.session_state.current_page = "Results & Analytics"
                     st.rerun()
                 
         except Exception as e:
-            st.error(f"❌ Error loading dataset: {str(e)}")
+            st.error(f"Error loading dataset: {str(e)}")
     
     # Current dataset status
     if st.session_state.dataset is not None:
-        st.markdown("### 📊 Current Dataset Status")
-        st.success(f"✅ Dataset loaded: {len(st.session_state.dataset)} rows")
+        st.markdown("### Current Dataset Status")
+        st.success(f"Dataset loaded: {len(st.session_state.dataset)} rows")
         if st.session_state.target_column:
-            st.info(f"🎯 Target: {st.session_state.target_column}")
+            st.info(f"Target: {st.session_state.target_column}")
 
 def show_results_page():
     """Display the results and analytics page."""
     
-    st.markdown("## 📈 Results & Analytics")
+    st.markdown("## Results & Analytics")
     
     # Check if both model and dataset are loaded
     if st.session_state.model is None:
-        st.error("❌ Please upload a model first")
+        st.error("Please upload a model first")
         return
     
     if st.session_state.dataset is None:
-        st.error("❌ Please upload a dataset first")
+        st.error("Please upload a dataset first")
         return
     
     if st.session_state.target_column is None:
-        st.error("❌ Please select a target column first")
+        st.error("Please select a target column first")
         return
     
     # Prepare data
@@ -426,7 +425,7 @@ def show_results_page():
     y_true = dataset[target_column]
     
     # Show data preparation info
-    st.markdown("### 📊 Data Preparation")
+    st.markdown("### Data Preparation")
     col1, col2 = st.columns(2)
     with col1:
         st.info(f"Features used: {len(feature_columns)}")
@@ -436,7 +435,7 @@ def show_results_page():
         st.info(f"Model type: {st.session_state.model_type}")
     
     # Evaluate model button
-    if st.button("🚀 Evaluate Model", type="primary", key="evaluate_btn"):
+    if st.button("Evaluate Model", type="primary", key="evaluate_btn"):
         with st.spinner("Evaluating model performance..."):
             try:
                 # Make predictions
@@ -455,10 +454,10 @@ def show_results_page():
                         'metrics': metrics,
                         'model_type': st.session_state.model_type
                     }
-                    st.success("✅ Model evaluation completed!")
+                    st.success("Model evaluation completed!")
                 
             except Exception as e:
-                st.error(f"❌ Error during evaluation: {str(e)}")
+                st.error(f"Error during evaluation: {str(e)}")
     
     # Display results if available
     if st.session_state.results is not None:
@@ -471,15 +470,15 @@ def show_results_page():
     
     # Next steps
     if st.session_state.results is not None:
-        st.markdown("### 🔄 Next Steps")
+        st.markdown("### Next Steps")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🎲 Generate Synthetic Data", key="goto_generation_btn"):
-                st.session_state.current_page = "🎲 Data Generation"
+            if st.button("Generate Synthetic Data", key="goto_generation_btn"):
+                st.session_state.current_page = "Data Generation"
                 st.rerun()
         with col2:
-            if st.button("🔍 SHAP Analysis", key="goto_shap_btn"):
-                st.session_state.current_page = "🔍 SHAP Explainability"
+            if st.button("SHAP Analysis", key="goto_shap_btn"):
+                st.session_state.current_page = "Model Explainability"
                 st.rerun()
 
 def display_classification_results(results):
@@ -489,7 +488,7 @@ def display_classification_results(results):
     y_true = results['y_true']
     y_pred = results['y_pred']
     
-    st.markdown("### 📊 Classification Metrics")
+    st.markdown("###  Classification Metrics")
     
     # Key metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -506,7 +505,7 @@ def display_classification_results(results):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 🔢 Confusion Matrix")
+        st.markdown("### Confusion Matrix")
         cm = metrics['confusion_matrix']
         fig = px.imshow(cm, text_auto=True, aspect="auto", 
                        title="Confusion Matrix",
@@ -514,7 +513,7 @@ def display_classification_results(results):
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("### 📈 Prediction Distribution")
+        st.markdown("###  Prediction Distribution")
         pred_counts = pd.Series(y_pred).value_counts().sort_index()
         true_counts = pd.Series(y_true).value_counts().sort_index()
         
@@ -528,7 +527,7 @@ def display_classification_results(results):
         st.plotly_chart(fig, use_container_width=True)
     
     # Classification Report
-    st.markdown("### 📋 Classification Report")
+    st.markdown("###  Classification Report")
     report_df = pd.DataFrame(metrics['classification_report']).transpose()
     st.dataframe(report_df.round(3))
 
@@ -539,7 +538,7 @@ def display_regression_results(results):
     y_true = results['y_true']
     y_pred = results['y_pred']
     
-    st.markdown("### 📊 Regression Metrics")
+    st.markdown("###  Regression Metrics")
     
     # Key metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -556,7 +555,7 @@ def display_regression_results(results):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📈 Predicted vs Actual")
+        st.markdown("###  Predicted vs Actual")
         fig = px.scatter(x=y_true, y=y_pred, 
                         title="Predicted vs Actual Values",
                         labels={'x': 'Actual', 'y': 'Predicted'})
@@ -569,7 +568,7 @@ def display_regression_results(results):
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("### 📉 Residuals")
+        st.markdown("###  Residuals")
         residuals = y_true - y_pred
         fig = px.scatter(x=y_pred, y=residuals, 
                         title="Residuals vs Predicted",
@@ -578,33 +577,33 @@ def display_regression_results(results):
         st.plotly_chart(fig, use_container_width=True)
     
     # Error distribution
-    st.markdown("### 📊 Error Distribution")
+    st.markdown("###  Error Distribution")
     fig = px.histogram(x=residuals, title="Distribution of Residuals")
     st.plotly_chart(fig, use_container_width=True)
 
 def show_data_generation_page():
     """Display the data generation page."""
     
-    st.markdown("## 🎲 Data Generation")
+    st.markdown("##  Data Generation")
     st.markdown("Generate synthetic test data for performance testing.")
     
     if st.session_state.model is None:
-        st.error("❌ Please upload a model first")
+        st.error(" Please upload a model first")
         return
     
     if st.session_state.dataset is None:
-        st.error("❌ Please upload a dataset first to understand the feature structure")
+        st.error(" Please upload a dataset first to understand the feature structure")
         return
     
     # Get feature information from existing dataset
     target_column = st.session_state.target_column
     feature_columns = [col for col in st.session_state.dataset.columns if col != target_column]
     
-    st.markdown("### 📊 Data Generation Based on Your Dataset")
+    st.markdown("###  Data Generation Based on Your Dataset")
     st.info(f"Generating data with {len(feature_columns)} features: {', '.join(feature_columns)}")
     
     # Data generation parameters
-    st.markdown("### ⚙️ Generation Parameters")
+    st.markdown("###  Generation Parameters")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -615,7 +614,7 @@ def show_data_generation_page():
         noise_level = st.slider("Noise level:", 0.0, 1.0, 0.1)
         distribution = st.selectbox("Distribution:", ["normal", "uniform", "exponential"])
     
-    if st.button("🎲 Generate Data", key="generate_data_btn"):
+    if st.button(" Generate Data", key="generate_data_btn"):
         with st.spinner("Generating synthetic data..."):
             try:
                 # Generate synthetic data based on existing dataset statistics
@@ -654,14 +653,14 @@ def show_data_generation_page():
                 synthetic_df = pd.DataFrame(synthetic_data)
                 st.session_state.synthetic_data = synthetic_df
                 
-                st.success(f"✅ Generated {num_samples} synthetic samples!")
+                st.success(f" Generated {num_samples} synthetic samples!")
                 
                 # Display preview
-                st.markdown("### 📋 Generated Data Preview")
+                st.markdown("###  Generated Data Preview")
                 st.dataframe(synthetic_df.head())
                 
                 # Comparison with original data
-                st.markdown("### 📊 Comparison with Original Data")
+                st.markdown("###  Comparison with Original Data")
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -673,35 +672,35 @@ def show_data_generation_page():
                     st.dataframe(synthetic_df.describe())
                 
                 # Next steps
-                st.markdown("### 🔄 Next Steps")
-                if st.button("⚡ Performance Testing", key="goto_performance_btn"):
-                    st.session_state.current_page = "⚡ Performance Testing"
+                st.markdown("###  Next Steps")
+                if st.button(" Performance Testing", key="goto_performance_btn"):
+                    st.session_state.current_page = " Performance Testing"
                     st.rerun()
                 
             except Exception as e:
-                st.error(f"❌ Error generating data: {str(e)}")
+                st.error(f" Error generating data: {str(e)}")
     
     # Display current synthetic data
     if st.session_state.synthetic_data is not None:
-        st.markdown("### 📊 Current Synthetic Data")
-        st.success(f"✅ Generated dataset with {len(st.session_state.synthetic_data)} samples")
+        st.markdown("###  Current Synthetic Data")
+        st.success(f" Generated dataset with {len(st.session_state.synthetic_data)} samples")
 
 def show_performance_testing_page():
     """Display the performance testing page."""
     
-    st.markdown("## ⚡ Performance Testing")
+    st.markdown("##  Performance Testing")
     st.markdown("Test your model's latency, throughput, and error rates using synthetic data.")
     
     if st.session_state.model is None:
-        st.error("❌ Please upload a model first")
+        st.error(" Please upload a model first")
         return
     
     if st.session_state.synthetic_data is None:
-        st.error("❌ Please generate synthetic data first")
+        st.error(" Please generate synthetic data first")
         return
     
     # Performance testing parameters
-    st.markdown("### ⚙️ Test Parameters")
+    st.markdown("###  Test Parameters")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -718,7 +717,7 @@ def show_performance_testing_page():
     
     st.info(f"Using {len(test_data)} samples from generated synthetic data")
     
-    if st.button("🚀 Run Performance Test", type="primary", key="perf_test_btn"):
+    if st.button(" Run Performance Test", type="primary", key="perf_test_btn"):
         with st.spinner("Running performance tests..."):
             try:
                 latencies = []
@@ -773,7 +772,7 @@ def show_performance_testing_page():
                 st.session_state.performance_results = performance_results
                 
                 # Display results
-                st.success("✅ Performance test completed!")
+                st.success(" Performance test completed!")
                 
                 # Key metrics
                 col1, col2, col3, col4 = st.columns(4)
@@ -799,38 +798,38 @@ def show_performance_testing_page():
                     st.plotly_chart(fig, use_container_width=True)
                 
                 # Latency distribution
-                st.markdown("### 📊 Latency Distribution")
+                st.markdown("###  Latency Distribution")
                 fig = px.histogram(x=latencies, title="Distribution of Latencies (ms)")
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Next steps
-                st.markdown("### 🔄 Next Steps")
-                if st.button("🔍 SHAP Analysis", key="goto_shap_from_perf_btn"):
-                    st.session_state.current_page = "🔍 SHAP Explainability"
+                st.markdown("###  Next Steps")
+                if st.button(" SHAP Analysis", key="goto_shap_from_perf_btn"):
+                    st.session_state.current_page = " SHAP Explainability"
                     st.rerun()
                 
             except Exception as e:
-                st.error(f"❌ Error during performance testing: {str(e)}")
+                st.error(f" Error during performance testing: {str(e)}")
 
 def show_shap_page():
     """Display the SHAP explainability page."""
     
-    st.markdown("## 🔍 SHAP Explainability")
+    st.markdown("##  SHAP Explainability")
     st.markdown("Understand your model's predictions using feature importance analysis.")
     
     if st.session_state.model is None:
-        st.error("❌ Please upload a model first")
+        st.error(" Please upload a model first")
         return
     
     # Check if synthetic data is available
     if st.session_state.synthetic_data is None:
-        st.error("❌ No synthetic data available. Please generate synthetic data first.")
+        st.error(" No synthetic data available. Please generate synthetic data first.")
         return
         
     # Use synthetic data for explanation
     explain_data = st.session_state.synthetic_data.copy()
     
-    st.info("ℹ️ Using synthetic data for SHAP explanation analysis")
+    st.info(" Using synthetic data for SHAP explanation analysis")
     
     # Validate data types and handle any missing values
     for col in explain_data.columns:
@@ -844,7 +843,7 @@ def show_shap_page():
     max_samples = min(100, len(explain_data))
     num_samples = st.slider("Number of samples to explain:", 1, max_samples, min(10, max_samples))
     
-    if st.button("🔍 Generate SHAP Explanations", type="primary", key="shap_btn"):
+    if st.button(" Generate SHAP Explanations", type="primary", key="shap_btn"):
         with st.spinner("Generating SHAP explanations..."):
             try:
                 # Simple feature importance (correlation-based for simplicity)
@@ -878,7 +877,7 @@ def show_shap_page():
                     return
                 
                 # Display feature importance
-                st.markdown("### 📊 Feature Importance")
+                st.markdown("###  Feature Importance")
                 
                 # Create dataframe and normalize importance scores
                 importance_df = pd.DataFrame(list(feature_importance.items()), 
@@ -916,14 +915,14 @@ def show_shap_page():
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Sample predictions table
-                st.markdown("### 🎯 Sample Predictions")
+                st.markdown("###  Sample Predictions")
                 result_df = sample_data.copy()
                 result_df['Prediction'] = predictions
                 st.dataframe(result_df)
                 
                 # Feature correlation heatmap
                 if len(sample_data.select_dtypes(include=[np.number]).columns) > 1:
-                    st.markdown("### 🔥 Feature Correlation Heatmap")
+                    st.markdown("###  Feature Correlation Heatmap")
                     numeric_data = sample_data.select_dtypes(include=[np.number])
                     correlation_matrix = numeric_data.corr()
                     fig = px.imshow(correlation_matrix, title="Feature Correlation Matrix", 
@@ -931,7 +930,7 @@ def show_shap_page():
                     st.plotly_chart(fig, use_container_width=True)
                 
                 # Top important features
-                st.markdown("### 🏆 Top 5 Most Important Features")
+                st.markdown("### Top 5 Most Important Features")
                 
                 # Get top 5 features and create a dedicated visualization for them
                 top_features = importance_df.head(5)  # Using head() since we sorted descending
@@ -962,11 +961,11 @@ def show_shap_page():
                 for idx, row in top_features.iterrows():
                     st.info(f"**{row['Feature']}**: Normalized importance score {row['Importance']:.3f}")
                 
-                st.success("✅ Feature importance analysis generated!")
-                st.info("ℹ️ Note: This is a simplified explanation using correlation analysis. For more advanced analysis, consider installing the SHAP library for deeper model interpretability.")
+                st.success(" Feature importance analysis generated!")
+                st.info(" Note: This is a simplified explanation using correlation analysis. For more advanced analysis, consider installing the SHAP library for deeper model interpretability.")
                 
             except Exception as e:
-                st.error(f"❌ Error generating explanations: {str(e)}")
+                st.error(f" Error generating explanations: {str(e)}")
 
 if __name__ == "__main__":
     main()
